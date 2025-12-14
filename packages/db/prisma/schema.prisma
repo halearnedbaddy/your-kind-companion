@@ -1,0 +1,222 @@
+// Paying-zee Prisma schema
+// Core data model for escrow transactions, payouts, disputes, notifications, and audit logs.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum TransactionStatus {
+  PENDING
+  ESCROWED
+  ACTIVE
+  DELIVERED
+  COMPLETED
+  DISPUTED
+  CANCELLED
+  REFUNDED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum NotificationChannel {
+  SMS
+  EMAIL
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  ADMIN
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerAccount {
+  ESCROW
+  PLATFORM_FEES
+  INSURANCE_FUND
+  USER_BALANCE
+  PROVIDER_SETTLEMENT
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id       String   @id @default(cuid())
+  name     String?
+  phone    String?  @unique
+  email    String?  @unique
+  role     UserRole @default(BUYER)
+  verified Boolean  @default(false)
+  kycLevel Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyerTransactions  Transaction[]  @relation("BuyerTransactions")
+  sellerTransactions Transaction[]  @relation("SellerTransactions")
+  payouts            Payout[]
+  auditLogs          AuditLog[]     @relation("UserAuditLogs")
+  notifications      Notification[]
+}
+
+model Transaction {
+  id            String @id @default(cuid())
+  transactionId String @unique // external/public reference
+
+  buyer   User?   @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  buyerId String?
+
+  seller   User?   @relation("SellerTransactions", fields: [sellerId], references: [id])
+  sellerId String?
+
+  // For MVP, sellers can be just a phone/handle; later can link to User
+  sellerContact       String
+  sellerPayoutContact String?
+
+  amount            Int
+  currency          String
+  status            TransactionStatus @default(PENDING)
+  productName       String?
+  description       String?
+  paymentRef        String?           @unique // provider reference
+  expiresAt         DateTime?
+  deliveryProofUrls Json?
+  deliveredAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  escrow        Escrow?
+  payouts       Payout[]
+  disputes      Dispute[]
+  ledgerEntries LedgerEntry[]
+}
+
+model Escrow {
+  id            String      @id @default(cuid())
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId String      @unique
+
+  heldAmount      Int
+  providerAccount String?
+  ledgerSnapshot  Json?
+
+  releasedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Payout {
+  id            String       @id @default(cuid())
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  transactionId String?
+
+  seller   User?   @relation(fields: [sellerId], references: [id])
+  sellerId String?
+
+  payoutRef String?      @unique
+  status    PayoutStatus @default(PENDING)
+  amount    Int
+
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  ledgerEntries LedgerEntry[]
+}
+
+model Dispute {
+  id            String      @id @default(cuid())
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId String
+
+  openedBy     String
+  reason       String
+  evidenceUrls Json?
+  status       DisputeStatus @default(OPEN)
+  resolution   String?
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+}
+
+model Notification {
+  id       String              @id @default(cuid())
+  user     User?               @relation(fields: [userId], references: [id])
+  userId   String?
+  phone    String?
+  email    String?
+  channel  NotificationChannel
+  template String
+  payload  Json?
+
+  sentAt            DateTime?
+  status            NotificationStatus @default(PENDING)
+  providerMessageId String?
+
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String         @id @default(cuid())
+  actor     User?          @relation("UserAuditLogs", fields: [actorId], references: [id])
+  actorId   String?
+  actorType AuditActorType
+  action    String
+  details   Json?
+
+  createdAt DateTime @default(now())
+}
+
+model LedgerEntry {
+  id           String          @id @default(cuid())
+  refType      String
+  refId        String
+  entryType    LedgerEntryType
+  account      LedgerAccount
+  amount       Int
+  currency     String
+  balanceAfter Int?
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  transactionId String?
+
+  payout   Payout? @relation(fields: [payoutId], references: [id])
+  payoutId String?
+}
