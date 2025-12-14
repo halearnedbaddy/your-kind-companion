@@ -2,12 +2,18 @@
   "name": "payingzee-monorepo",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev:web": "cd apps/web && npm run dev",
     "dev:admin": "cd apps/admin && npm run dev",
     "dev:api": "cd apps/api && npx ts-node-dev src/index.ts",
     "dev:worker": "cd apps/worker && npx ts-node-dev src/index.ts",
     "postinstall": "cd packages/db && npx prisma generate"
+  },
+  "dependencies": {
+    "react-router-dom": "^7.10.1"
   }
 }
