@@ -166,6 +166,27 @@ class WebSocketManager {
   }
 
   /**
+   * Send notification to all admin users
+   */
+  notifyAdmins(notification: NotificationPayload) {
+    const payload = JSON.stringify({
+      type: 'admin:notification',
+      ...notification,
+    });
+
+    // Send to all connected clients - in production, filter by admin role
+    this.clients.forEach((clients) => {
+      clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(payload);
+        }
+      });
+    });
+    
+    console.log(`📢 Admin notification broadcast: ${notification.title}`);
+  }
+
+  /**
    * Get connected users count
    */
   getConnectedUsersCount(): number {

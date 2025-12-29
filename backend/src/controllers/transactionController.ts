@@ -8,6 +8,7 @@ import {
   notifyDeliveryConfirmed,
   notifyDisputeOpened,
 } from './notificationController';
+import { wsManager } from '../services/websocket';
 
 /**
  * Create a new transaction (payment link)
@@ -53,6 +54,21 @@ export const createTransaction = async (req: Request, res: Response) => {
         userAgent: req.get('user-agent'),
         success: true,
       },
+    });
+
+    // Notify admins in real-time
+    wsManager.notifyAdmins({
+      type: 'TRANSACTION_CREATED',
+      title: 'New Transaction Created',
+      message: `${transaction.seller.name} created a payment link for ${itemName} (KES ${amount.toLocaleString()})`,
+      data: {
+        type: 'TRANSACTION_CREATED',
+        transactionId: transaction.id,
+        itemName,
+        amount,
+        sellerName: transaction.seller.name,
+      },
+      timestamp: new Date().toISOString(),
     });
 
     res.status(201).json({
@@ -283,6 +299,20 @@ export const confirmPayment = async (req: Request, res: Response) => {
     // Notify seller that funds are secured
     await notifyPaymentReceived(updatedTransaction);
 
+    // Notify admins of payment received
+    wsManager.notifyAdmins({
+      type: 'PAYMENT_RECEIVED',
+      title: 'Payment Received',
+      message: `Payment of KES ${transaction.amount.toLocaleString()} received for transaction ${id}`,
+      data: {
+        type: 'PAYMENT_RECEIVED',
+        transactionId: id,
+        amount: transaction.amount,
+        itemName: transaction.itemName,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
     res.json({
       success: true,
       message: 'Payment confirmed. Funds are now in escrow.',
@@ -430,6 +460,21 @@ export const openDispute = async (req: Request, res: Response) => {
       });
 
       return newDispute;
+    });
+
+    // Notify admins of new dispute (HIGH PRIORITY)
+    wsManager.notifyAdmins({
+      type: 'DISPUTE_OPENED',
+      title: 'New Dispute Opened',
+      message: `Dispute opened for transaction ${id}: ${reason}. Amount at risk: KES ${transaction.amount.toLocaleString()}`,
+      data: {
+        type: 'DISPUTE_OPENED',
+        disputeId: dispute.id,
+        transactionId: id,
+        reason,
+        amount: transaction.amount,
+      },
+      timestamp: new Date().toISOString(),
     });
 
     res.status(201).json({
