@@ -4,6 +4,7 @@ import { otpService } from '../services/otpService';
 import { jwtService } from '../services/jwtService';
 import { normalizePhoneNumber, validatePhoneNumber } from '../middleware/security';
 import { sendSMS } from '../services/smsService';
+import { wsManager } from '../services/websocket';
 import bcrypt from 'bcryptjs';
 
 /**
@@ -268,6 +269,20 @@ export const register = async (req: Request, res: Response) => {
         userAgent: req.get('user-agent'),
         success: true,
       },
+    });
+
+    // Notify admins of new user registration
+    wsManager.notifyAdmins({
+      type: 'USER_REGISTERED',
+      title: 'New User Registered',
+      message: `${user.name} joined as a ${user.role.toLowerCase()}`,
+      data: {
+        type: 'USER_REGISTERED',
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+      },
+      timestamp: new Date().toISOString(),
     });
 
     res.status(201).json({

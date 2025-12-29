@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, AlertTriangle, Activity, Settings, Menu, X, Bell, LogOut, Shield, Store, Share2 } from 'lucide-react';
+import { LayoutDashboard, Users, AlertTriangle, Activity, Settings, Menu, X, LogOut, Shield, Store, Share2 } from 'lucide-react';
 import { AdminOverview } from '@/components/admin/AdminOverview';
 import { AdminTransactions } from '@/components/admin/AdminTransactions';
 import { AdminDisputes } from '@/components/admin/AdminDisputes';
@@ -8,6 +8,7 @@ import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminStores } from '@/components/admin/AdminStores';
 import { AdminSocial } from '@/components/admin/AdminSocial';
 import { AdminSettings } from '@/components/admin/AdminSettings';
+import { AdminNotificationCenter } from '@/components/admin/AdminNotificationCenter';
 import { useAuth } from '@/contexts/AuthContext';
 export function AdminDashboard() {
     const navigate = useNavigate();
@@ -97,10 +98,7 @@ export function AdminDashboard() {
                         <h1 className="text-xl font-bold capitalize hidden md:block">{activeTab}</h1>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
-                            <Bell size={20} />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                        </button>
+                        <AdminNotificationCenter />
                     </div>
                 </header>
 
