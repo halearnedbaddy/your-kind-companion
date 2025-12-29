@@ -2,6 +2,7 @@ import { Search, Filter, Eye, MoreHorizontal, Download, Loader } from 'lucide-re
 import StatusBadge from '../StatusBadge';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useState } from 'react';
+import { exportToCSV } from '@/utils/csvExport';
 
 export function AdminTransactions() {
     const { transactions, loading, error } = useAdminData();
@@ -12,6 +13,32 @@ export function AdminTransactions() {
         trx.seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         trx.buyer?.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleExportCSV = () => {
+        const exportData = filteredTransactions.map(trx => ({
+            id: trx.id,
+            itemName: trx.itemName,
+            amount: trx.amount,
+            status: trx.status,
+            buyerName: trx.buyer?.name || 'N/A',
+            sellerName: trx.seller.name,
+            sellerPhone: trx.seller.phone,
+            createdAt: new Date(trx.createdAt).toISOString(),
+        }));
+
+        const columns = [
+            { key: 'id' as const, label: 'Transaction ID' },
+            { key: 'itemName' as const, label: 'Item' },
+            { key: 'amount' as const, label: 'Amount (KES)' },
+            { key: 'status' as const, label: 'Status' },
+            { key: 'buyerName' as const, label: 'Buyer' },
+            { key: 'sellerName' as const, label: 'Seller' },
+            { key: 'sellerPhone' as const, label: 'Seller Phone' },
+            { key: 'createdAt' as const, label: 'Created At' },
+        ];
+
+        exportToCSV(exportData, `transactions_${new Date().toISOString().split('T')[0]}`, columns);
+    };
 
     if (loading) {
         return (
@@ -37,7 +64,11 @@ export function AdminTransactions() {
                     <h2 className="text-2xl font-bold text-gray-800">Transaction Monitoring</h2>
                     <p className="text-sm text-gray-500">Live view of all escrow transactions ({transactions.length} total)</p>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition">
+                <button 
+                    onClick={handleExportCSV}
+                    disabled={filteredTransactions.length === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                     <Download size={16} /> Export CSV
                 </button>
             </div>
