@@ -13,11 +13,16 @@ export function BuyerOrders({ orders, loading, error, isConnected = false }: Buy
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
 
-  const filteredOrders = orders.filter(order =>
-    order.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.id.includes(searchTerm) ||
-    order.seller.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Safely filter orders with null checks
+  const filteredOrders = (orders || []).filter(order => {
+    const itemName = order?.itemName || '';
+    const orderId = order?.id || '';
+    const sellerName = order?.seller?.name || '';
+    
+    return itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      orderId.includes(searchTerm) ||
+      sellerName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   if (loading) {
     return (
@@ -41,7 +46,7 @@ export function BuyerOrders({ orders, loading, error, isConnected = false }: Buy
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">My Purchases</h2>
-          <p className="text-sm text-gray-500">{orders.length} total orders</p>
+          <p className="text-sm text-gray-500">{(orders || []).length} total orders</p>
         </div>
         {/* Live Connection Status */}
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
@@ -112,16 +117,16 @@ export function BuyerOrders({ orders, loading, error, isConnected = false }: Buy
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {order.itemName}
+                    {order.itemName || 'Unknown Item'}
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm">
-                      <p className="font-semibold text-gray-900">{order.seller.name}</p>
-                      <p className="text-xs text-gray-500">{order.seller.phone}</p>
+                      <p className="font-semibold text-gray-900">{order.seller?.name || 'Unknown Seller'}</p>
+                      <p className="text-xs text-gray-500">{order.seller?.phone || ''}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                    KES {order.amount.toLocaleString()}
+                    KES {(order.amount || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
