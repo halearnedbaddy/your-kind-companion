@@ -1,6 +1,7 @@
-import { Search, MoreVertical, BadgeCheck, Loader } from 'lucide-react';
+import { Search, MoreVertical, BadgeCheck, Loader, Download } from 'lucide-react';
 import { useState } from 'react';
 import { useAdminData } from '@/hooks/useAdminData';
+import { exportToCSV } from '@/utils/csvExport';
 
 export function AdminUsers() {
     const [activeTab, setActiveTab] = useState<'SELLER' | 'BUYER'>('SELLER');
@@ -13,6 +14,34 @@ export function AdminUsers() {
             u.phone.includes(searchTerm) ||
             u.id.includes(searchTerm))
     );
+
+    const handleExportCSV = () => {
+        const exportData = filteredUsers.map(user => ({
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            role: user.role,
+            isActive: user.isActive ? 'Yes' : 'No',
+            isVerified: user.isVerified ? 'Yes' : 'No',
+            availableBalance: user.wallet?.availableBalance || 0,
+            pendingBalance: user.wallet?.pendingBalance || 0,
+            joinedAt: new Date(user.memberSince).toISOString(),
+        }));
+
+        const columns = [
+            { key: 'id' as const, label: 'User ID' },
+            { key: 'name' as const, label: 'Name' },
+            { key: 'phone' as const, label: 'Phone' },
+            { key: 'role' as const, label: 'Role' },
+            { key: 'isActive' as const, label: 'Active' },
+            { key: 'isVerified' as const, label: 'Verified' },
+            { key: 'availableBalance' as const, label: 'Available Balance (KES)' },
+            { key: 'pendingBalance' as const, label: 'Pending Balance (KES)' },
+            { key: 'joinedAt' as const, label: 'Joined At' },
+        ];
+
+        exportToCSV(exportData, `${activeTab.toLowerCase()}s_${new Date().toISOString().split('T')[0]}`, columns);
+    };
 
     if (loading) {
         return (
@@ -33,7 +62,16 @@ export function AdminUsers() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+                <button 
+                    onClick={handleExportCSV}
+                    disabled={filteredUsers.length === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Download size={16} /> Export {activeTab === 'SELLER' ? 'Sellers' : 'Buyers'}
+                </button>
+            </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="border-b border-gray-200">

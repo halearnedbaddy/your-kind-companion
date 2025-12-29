@@ -1,6 +1,7 @@
-import { MessageSquare, AlertTriangle, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { MessageSquare, AlertTriangle, CheckCircle, XCircle, Loader, Download } from 'lucide-react';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useState } from 'react';
+import { exportToCSV } from '@/utils/csvExport';
 
 export function AdminDisputes() {
     const { disputes, loading, error, refetch } = useAdminData();
@@ -28,6 +29,34 @@ export function AdminDisputes() {
         }
     };
 
+    const handleExportCSV = () => {
+        const exportData = disputes.map(dispute => ({
+            id: dispute.id,
+            transactionId: dispute.transactionId,
+            reason: dispute.reason,
+            status: dispute.status,
+            itemName: dispute.transaction?.itemName || 'N/A',
+            amount: dispute.transaction?.amount || 0,
+            sellerName: dispute.transaction?.seller?.name || 'N/A',
+            buyerName: dispute.transaction?.buyer?.name || 'N/A',
+            createdAt: new Date(dispute.createdAt).toISOString(),
+        }));
+
+        const columns = [
+            { key: 'id' as const, label: 'Dispute ID' },
+            { key: 'transactionId' as const, label: 'Transaction ID' },
+            { key: 'reason' as const, label: 'Reason' },
+            { key: 'status' as const, label: 'Status' },
+            { key: 'itemName' as const, label: 'Item' },
+            { key: 'amount' as const, label: 'Amount (KES)' },
+            { key: 'sellerName' as const, label: 'Seller' },
+            { key: 'buyerName' as const, label: 'Buyer' },
+            { key: 'createdAt' as const, label: 'Created At' },
+        ];
+
+        exportToCSV(exportData, `disputes_${new Date().toISOString().split('T')[0]}`, columns);
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -47,9 +76,18 @@ export function AdminDisputes() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-800">Dispute Resolution Center</h2>
-                <p className="text-sm text-gray-500">Total disputes: {disputes.length}</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Dispute Resolution Center</h2>
+                    <p className="text-sm text-gray-500">Total disputes: {disputes.length}</p>
+                </div>
+                <button 
+                    onClick={handleExportCSV}
+                    disabled={disputes.length === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Download size={16} /> Export CSV
+                </button>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
