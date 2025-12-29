@@ -95,13 +95,27 @@ export function useBuyerData() {
       ]);
 
       if (ordersRes.success && ordersRes.data) {
-        const data = ordersRes.data as BuyerOrder[] | { orders?: BuyerOrder[] };
-        const ordersData = Array.isArray(data) ? data : data.orders || [];
+        const data = ordersRes.data as BuyerOrder[] | { orders?: BuyerOrder[]; data?: BuyerOrder[] };
+        let ordersData: BuyerOrder[] = [];
+        if (Array.isArray(data)) {
+          ordersData = data;
+        } else if (data.orders) {
+          ordersData = data.orders;
+        } else if (data.data) {
+          ordersData = data.data;
+        }
         setOrders(ordersData);
       }
       if (disputesRes.success && disputesRes.data) {
-        const data = disputesRes.data as BuyerDispute[] | { disputes?: BuyerDispute[] };
-        const disputesData = Array.isArray(data) ? data : data.disputes || [];
+        const data = disputesRes.data as BuyerDispute[] | { disputes?: BuyerDispute[]; data?: BuyerDispute[] };
+        let disputesData: BuyerDispute[] = [];
+        if (Array.isArray(data)) {
+          disputesData = data;
+        } else if (data.disputes) {
+          disputesData = data.disputes;
+        } else if (data.data) {
+          disputesData = data.data;
+        }
         setDisputes(disputesData);
       }
       if (walletRes.success && walletRes.data) {
