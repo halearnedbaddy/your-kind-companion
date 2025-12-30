@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   AlertCircle, X, Eye, MessageSquare, CheckCircle,
   Clock, MapPin, Truck, Phone, Search, Plus, Upload,
-  TrendingUp, Award, ShoppingBag, Zap
+  TrendingUp, Award, ShoppingBag, Zap, Download
 } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import { ShippingModal } from '@/components/ShippingModal';
 import { api } from '@/services/api';
+import { exportToCSV } from '@/utils/csvExport';
+import { DateRangeFilter } from '@/components/ui/DateRangeFilter';
 
 interface OrderShipping {
   courierName: string;
@@ -69,6 +71,8 @@ export function OrdersTab({ onCreatePaymentLink }: OrdersTabProps) {
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [dateStart, setDateStart] = useState<string | null>(null);
+  const [dateEnd, setDateEnd] = useState<string | null>(null);
 
   const [ui, setUi] = useState<UIState>({
     loading: true,
@@ -330,7 +334,22 @@ export function OrdersTab({ onCreatePaymentLink }: OrdersTabProps) {
     const matchesSearch = !searchQuery ||
       order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.buyerName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    
+    // Date range filter
+    let matchesDate = true;
+    if (dateStart || dateEnd) {
+      const orderDate = new Date(order.createdAt);
+      if (dateStart) {
+        matchesDate = matchesDate && orderDate >= new Date(dateStart);
+      }
+      if (dateEnd) {
+        const endDate = new Date(dateEnd);
+        endDate.setHours(23, 59, 59, 999);
+        matchesDate = matchesDate && orderDate <= endDate;
+      }
+    }
+    
+    return matchesFilter && matchesSearch && matchesDate;
   })?.sort((a, b) => {
     if (sortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -338,6 +357,41 @@ export function OrdersTab({ onCreatePaymentLink }: OrdersTabProps) {
     if (sortBy === 'amount-low') return a.amount - b.amount;
     return 0;
   }) || [];
+
+  const handleExportOrders = () => {
+    const exportData = filteredOrders.map(order => ({
+      id: order.id,
+      buyerName: order.buyerName,
+      buyerPhone: order.buyerPhone,
+      itemName: order.itemName,
+      quantity: order.quantity,
+      amount: order.amount,
+      status: order.status,
+      createdAt: new Date(order.createdAt).toISOString(),
+      deadline: order.deadline,
+      courierName: order.shipping?.courierName || '',
+      trackingNumber: order.shipping?.trackingNumber || '',
+    }));
+
+    const columns = [
+      { key: 'id' as const, label: 'Order ID' },
+      { key: 'buyerName' as const, label: 'Buyer Name' },
+      { key: 'buyerPhone' as const, label: 'Buyer Phone' },
+      { key: 'itemName' as const, label: 'Item' },
+      { key: 'quantity' as const, label: 'Quantity' },
+      { key: 'amount' as const, label: 'Amount (KES)' },
+      { key: 'status' as const, label: 'Status' },
+      { key: 'createdAt' as const, label: 'Created At' },
+      { key: 'deadline' as const, label: 'Deadline' },
+      { key: 'courierName' as const, label: 'Courier' },
+      { key: 'trackingNumber' as const, label: 'Tracking Number' },
+    ];
+
+    const dateRange = dateStart || dateEnd 
+      ? `_${dateStart || 'start'}_to_${dateEnd || 'now'}` 
+      : '';
+    exportToCSV(exportData, `seller_orders${dateRange}_${new Date().toISOString().split('T')[0]}`, columns);
+  };
 
   const OrderDetailModal = () => {
     if (!selectedOrder) return null;
@@ -727,7 +781,19 @@ export function OrdersTab({ onCreatePaymentLink }: OrdersTabProps) {
               className="w-full pl-10 pr-4 py-3 rounded-null-lg border border-gray-300 focus:outline-none focus:border-blue-500"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <DateRangeFilter
+              startDate={dateStart}
+              endDate={dateEnd}
+              onApply={(start, end) => {
+                setDateStart(start);
+                setDateEnd(end);
+              }}
+              onClear={() => {
+                setDateStart(null);
+                setDateEnd(null);
+              }}
+            />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -750,6 +816,13 @@ export function OrdersTab({ onCreatePaymentLink }: OrdersTabProps) {
               <option value="amount-high">Highest Amount</option>
               <option value="amount-low">Lowest Amount</option>
             </select>
+            <button
+              onClick={handleExportOrders}
+              disabled={filteredOrders.length === 0}
+              className="flex items-center gap-2 px-4 py-3 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={16} /> Export CSV
+            </button>
           </div>
         </div>
       </div>
