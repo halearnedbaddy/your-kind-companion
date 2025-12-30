@@ -105,12 +105,19 @@ class ApiService {
       }
     }
 
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     try {
       let response = await fetch(`${API_BASE}${endpoint}`, {
         method,
         headers: requestHeaders,
         body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       // Handle token expiration
       if (response.status === 401 && requireAuth) {
@@ -162,10 +169,21 @@ class ApiService {
         };
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('API request error:', error);
+      
+      // Check if it was a timeout
+      if (error instanceof Error && error.name === 'AbortError') {
+        return {
+          success: false,
+          error: 'Request timed out. Please check your connection and try again.',
+          code: 'TIMEOUT_ERROR',
+        };
+      }
+      
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Network error',
+        error: error instanceof Error ? error.message : 'Network error. Please try again.',
         code: 'NETWORK_ERROR',
       };
     }
