@@ -3,16 +3,35 @@ import StatusBadge from '../StatusBadge';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useState } from 'react';
 import { exportToCSV } from '@/utils/csvExport';
+import { DateRangeFilter } from '@/components/ui/DateRangeFilter';
 
 export function AdminTransactions() {
     const { transactions, loading, error } = useAdminData();
     const [searchTerm, setSearchTerm] = useState('');
+    const [dateStart, setDateStart] = useState<string | null>(null);
+    const [dateEnd, setDateEnd] = useState<string | null>(null);
 
-    const filteredTransactions = transactions.filter(trx =>
-        trx.id.includes(searchTerm) ||
-        trx.seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        trx.buyer?.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredTransactions = transactions.filter(trx => {
+        const matchesSearch = trx.id.includes(searchTerm) ||
+            trx.seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            trx.buyer?.name.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // Date range filter
+        let matchesDate = true;
+        if (dateStart || dateEnd) {
+            const trxDate = new Date(trx.createdAt);
+            if (dateStart) {
+                matchesDate = matchesDate && trxDate >= new Date(dateStart);
+            }
+            if (dateEnd) {
+                const endDate = new Date(dateEnd);
+                endDate.setHours(23, 59, 59, 999);
+                matchesDate = matchesDate && trxDate <= endDate;
+            }
+        }
+        
+        return matchesSearch && matchesDate;
+    });
 
     const handleExportCSV = () => {
         const exportData = filteredTransactions.map(trx => ({
@@ -37,7 +56,10 @@ export function AdminTransactions() {
             { key: 'createdAt' as const, label: 'Created At' },
         ];
 
-        exportToCSV(exportData, `transactions_${new Date().toISOString().split('T')[0]}`, columns);
+        const dateRange = dateStart || dateEnd 
+            ? `_${dateStart || 'start'}_to_${dateEnd || 'now'}` 
+            : '';
+        exportToCSV(exportData, `transactions${dateRange}_${new Date().toISOString().split('T')[0]}`, columns);
     };
 
     if (loading) {
@@ -59,18 +81,32 @@ export function AdminTransactions() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Transaction Monitoring</h2>
                     <p className="text-sm text-gray-500">Live view of all escrow transactions ({transactions.length} total)</p>
                 </div>
-                <button 
-                    onClick={handleExportCSV}
-                    disabled={filteredTransactions.length === 0}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <Download size={16} /> Export CSV
-                </button>
+                <div className="flex items-center gap-2">
+                    <DateRangeFilter
+                        startDate={dateStart}
+                        endDate={dateEnd}
+                        onApply={(start, end) => {
+                            setDateStart(start);
+                            setDateEnd(end);
+                        }}
+                        onClear={() => {
+                            setDateStart(null);
+                            setDateEnd(null);
+                        }}
+                    />
+                    <button 
+                        onClick={handleExportCSV}
+                        disabled={filteredTransactions.length === 0}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Download size={16} /> Export CSV
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -90,7 +126,6 @@ export function AdminTransactions() {
                         <Filter size={16} /> Filter Status
                     </button>
                 </div>
-
                 {/* Table */}
                 <table className="w-full text-left">
                     <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">

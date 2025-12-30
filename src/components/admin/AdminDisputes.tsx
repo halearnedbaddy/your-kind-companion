@@ -2,10 +2,32 @@ import { MessageSquare, AlertTriangle, CheckCircle, XCircle, Loader, Download } 
 import { useAdminData } from '@/hooks/useAdminData';
 import { useState } from 'react';
 import { exportToCSV } from '@/utils/csvExport';
+import { DateRangeFilter } from '@/components/ui/DateRangeFilter';
 
 export function AdminDisputes() {
     const { disputes, loading, error, refetch } = useAdminData();
     const [resolving, setResolving] = useState<string | null>(null);
+    const [dateStart, setDateStart] = useState<string | null>(null);
+    const [dateEnd, setDateEnd] = useState<string | null>(null);
+
+    // Filter disputes by date range
+    const filteredDisputes = disputes.filter(dispute => {
+        if (!dateStart && !dateEnd) return true;
+        
+        const disputeDate = new Date(dispute.createdAt);
+        let matchesDate = true;
+        
+        if (dateStart) {
+            matchesDate = matchesDate && disputeDate >= new Date(dateStart);
+        }
+        if (dateEnd) {
+            const endDate = new Date(dateEnd);
+            endDate.setHours(23, 59, 59, 999);
+            matchesDate = matchesDate && disputeDate <= endDate;
+        }
+        
+        return matchesDate;
+    });
 
     const handleResolveDispute = async (disputeId: string, favoriteSide: 'buyer' | 'seller') => {
         setResolving(disputeId);
@@ -30,7 +52,7 @@ export function AdminDisputes() {
     };
 
     const handleExportCSV = () => {
-        const exportData = disputes.map(dispute => ({
+        const exportData = filteredDisputes.map(dispute => ({
             id: dispute.id,
             transactionId: dispute.transactionId,
             reason: dispute.reason,
@@ -54,7 +76,10 @@ export function AdminDisputes() {
             { key: 'createdAt' as const, label: 'Created At' },
         ];
 
-        exportToCSV(exportData, `disputes_${new Date().toISOString().split('T')[0]}`, columns);
+        const dateRange = dateStart || dateEnd 
+            ? `_${dateStart || 'start'}_to_${dateEnd || 'now'}` 
+            : '';
+        exportToCSV(exportData, `disputes${dateRange}_${new Date().toISOString().split('T')[0]}`, columns);
     };
 
     if (loading) {
@@ -76,23 +101,37 @@ export function AdminDisputes() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Dispute Resolution Center</h2>
-                    <p className="text-sm text-gray-500">Total disputes: {disputes.length}</p>
+                    <p className="text-sm text-gray-500">Total disputes: {disputes.length}{filteredDisputes.length !== disputes.length ? ` (showing ${filteredDisputes.length})` : ''}</p>
                 </div>
-                <button 
-                    onClick={handleExportCSV}
-                    disabled={disputes.length === 0}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <Download size={16} /> Export CSV
-                </button>
+                <div className="flex items-center gap-2">
+                    <DateRangeFilter
+                        startDate={dateStart}
+                        endDate={dateEnd}
+                        onApply={(start, end) => {
+                            setDateStart(start);
+                            setDateEnd(end);
+                        }}
+                        onClear={() => {
+                            setDateStart(null);
+                            setDateEnd(null);
+                        }}
+                    />
+                    <button 
+                        onClick={handleExportCSV}
+                        disabled={filteredDisputes.length === 0}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Download size={16} /> Export CSV
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-                {disputes.length > 0 ? (
-                    disputes.map((dispute) => (
+                {filteredDisputes.length > 0 ? (
+                    filteredDisputes.map((dispute) => (
                         <div key={dispute.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col md:flex-row gap-6">
                             <div className="flex-1 space-y-4">
                                 <div className="flex items-center gap-3 flex-wrap">
@@ -147,8 +186,14 @@ export function AdminDisputes() {
                 ) : (
                     <div className="text-center py-12 bg-white rounded-xl border border-gray-200 border-dashed">
                         <CheckCircle className="mx-auto text-green-500 mb-4" size={48} />
-                        <h3 className="text-lg font-bold text-gray-900">All Clear!</h3>
-                        <p className="text-gray-500">There are no open disputes requiring attention.</p>
+                        <h3 className="text-lg font-bold text-gray-900">
+                            {dateStart || dateEnd ? 'No disputes in selected date range' : 'All Clear!'}
+                        </h3>
+                        <p className="text-gray-500">
+                            {dateStart || dateEnd 
+                                ? 'Try adjusting your date filter to see more results.' 
+                                : 'There are no open disputes requiring attention.'}
+                        </p>
                     </div>
                 )}
             </div>
