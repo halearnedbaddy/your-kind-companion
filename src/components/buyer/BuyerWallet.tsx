@@ -1,12 +1,14 @@
-import { DollarSignIcon, TrendingUpIcon, ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, LoaderIcon, RefreshCwIcon } from '@/components/icons';
+import { DollarSignIcon, TrendingUpIcon, ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, LoaderIcon, RefreshCwIcon, PlusIcon } from '@/components/icons';
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api';
+import { TopUpModal } from '@/components/TopUpModal';
 
 interface BuyerWalletProps {
   wallet: any;
   loading: boolean;
   error: string | null;
   onRefresh?: () => void;
+  userEmail?: string;
 }
 
 interface WalletTransaction {
@@ -22,9 +24,26 @@ interface WalletTransaction {
   };
 }
 
-export function BuyerWallet({ wallet, loading, error, onRefresh }: BuyerWalletProps) {
+export function BuyerWallet({ wallet, loading, error, onRefresh, userEmail }: BuyerWalletProps) {
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [showTopUpModal, setShowTopUpModal] = useState(false);
+
+  // Check for topup success in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const topupSuccess = urlParams.get('topup');
+    const reference = urlParams.get('reference');
+    
+    if (topupSuccess === 'success' && reference) {
+      // Verify the topup and refresh wallet
+      api.verifyPaystackPayment(reference).then(() => {
+        onRefresh?.();
+      });
+      // Clear URL params
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [onRefresh]);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -123,6 +142,18 @@ export function BuyerWallet({ wallet, loading, error, onRefresh }: BuyerWalletPr
 
   return (
     <div className="space-y-6">
+      {/* Top Up Button */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">My Wallet</h2>
+        <button
+          onClick={() => setShowTopUpModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 transition shadow-sm"
+        >
+          <PlusIcon size={18} />
+          Top Up Wallet
+        </button>
+      </div>
+
       {/* Financial Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Available Balance Card */}
@@ -131,6 +162,12 @@ export function BuyerWallet({ wallet, loading, error, onRefresh }: BuyerWalletPr
             <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center">
               <ArrowUpRightIcon className="text-white" size={24} />
             </div>
+            <button
+              onClick={() => setShowTopUpModal(true)}
+              className="px-3 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-200 transition"
+            >
+              + Add Funds
+            </button>
           </div>
           <p className="text-sm text-gray-600 mb-2">Available Balance</p>
           <h3 className="text-3xl font-bold text-gray-900 mb-2">
@@ -140,7 +177,7 @@ export function BuyerWallet({ wallet, loading, error, onRefresh }: BuyerWalletPr
             <TrendingUpIcon size={16} />
             <span>Ready to use</span>
           </div>
-          <p className="text-xs text-gray-500 mt-2">Available for withdrawal</p>
+          <p className="text-xs text-gray-500 mt-2">Available for purchases</p>
         </div>
 
         {/* Pending Balance Card */}
@@ -240,6 +277,13 @@ export function BuyerWallet({ wallet, loading, error, onRefresh }: BuyerWalletPr
           )}
         </div>
       </div>
+
+      {/* Top Up Modal */}
+      <TopUpModal 
+        isOpen={showTopUpModal} 
+        onClose={() => setShowTopUpModal(false)}
+        userEmail={userEmail}
+      />
     </div>
   );
 }

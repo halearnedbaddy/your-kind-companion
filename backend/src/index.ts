@@ -14,6 +14,7 @@ import adminRoutes from './routes/adminRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import intasendRoutes from './routes/intasendRoutes';
+import paystackRoutes from './routes/paystackRoutes';
 import storeRoutes from './routes/storeRoutes';
 import socialRoutes from './routes/socialRoutes';
 import productRoutes from './routes/productRoutes';
@@ -109,6 +110,7 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/intasend', intasendRoutes);
+app.use('/api/v1/paystack', paystackRoutes);
 // New APIs (ADD ONLY)
 app.use('/api/v1/store', storeRoutes);
 app.use('/api/v1/social', socialRoutes);

@@ -370,7 +370,37 @@ class ApiService {
     });
   }
 
-  // IntaSend Payment endpoints
+  // Paystack Payment endpoints
+  async getPaystackConfig() {
+    return this.request('/api/v1/paystack/config', { requireAuth: false });
+  }
+
+  async initiatePaystackPayment(data: { transactionId: string; email: string; metadata?: Record<string, unknown> }) {
+    return this.request('/api/v1/paystack/initialize', {
+      method: 'POST',
+      body: data,
+      requireAuth: false,
+    });
+  }
+
+  async initiatePaystackTopup(amount: number, email: string) {
+    return this.request('/api/v1/paystack/topup', {
+      method: 'POST',
+      body: { amount, email },
+    });
+  }
+
+  async verifyPaystackPayment(reference: string) {
+    return this.request(`/api/v1/paystack/verify/${encodeURIComponent(reference)}`, {
+      requireAuth: false,
+    });
+  }
+
+  async getPaystackBanks() {
+    return this.request('/api/v1/paystack/banks');
+  }
+
+  // IntaSend Payment endpoints (deprecated - using Paystack)
   async getIntaSendConfig() {
     return this.request('/api/v1/intasend/config', { requireAuth: false });
   }

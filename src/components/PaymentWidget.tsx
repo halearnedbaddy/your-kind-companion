@@ -1,45 +1,44 @@
 import { useState } from 'react';
-import { Smartphone, CreditCard, Loader, ExternalLink } from 'lucide-react';
+import { Smartphone, CreditCard, Loader, ExternalLink, ShieldCheck } from 'lucide-react';
 import { api } from '@/services/api';
 
 interface PaymentWidgetProps {
   transactionId: string;
   amount: number;
-  buyerName: string;
+  buyerName?: string;
   onPaymentSuccess?: () => void;
 }
 
-type PaymentMethod = 'mpesa' | 'card' | 'hosted';
+type PaymentMethod = 'mpesa' | 'card' | 'all';
 
-export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: PaymentWidgetProps) {
-  const [phoneNumber, setPhoneNumber] = useState('');
+export function PaymentWidget({ transactionId, amount }: PaymentWidgetProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'redirecting' | 'success' | 'failed'>('idle');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('hosted');
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'redirecting' | 'success' | 'failed'>('idle');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('all');
 
-  // Use IntaSend hosted checkout (recommended - supports M-Pesa, Cards, Bank)
-  const handleHostedCheckout = async (e: React.FormEvent) => {
+  // Initialize Paystack payment
+  const handlePaystackPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
     try {
-      const response = await api.createIntaSendCheckout({
+      const response = await api.initiatePaystackPayment({
         transactionId,
         email,
-        phone: phoneNumber || undefined,
+        metadata: { paymentMethod },
       });
 
       if (response.success && response.data) {
-        const data = response.data as { checkoutUrl: string };
+        const data = response.data as { authorizationUrl: string };
         setPaymentStatus('redirecting');
         
-        // Redirect to IntaSend hosted checkout page
-        window.location.href = data.checkoutUrl;
+        // Redirect to Paystack checkout page
+        window.location.href = data.authorizationUrl;
       } else {
-        setError(response.error || 'Failed to create checkout');
+        setError(response.error || 'Failed to initialize payment');
         setPaymentStatus('failed');
       }
     } catch (err) {
@@ -47,67 +46,6 @@ export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: Payme
       setPaymentStatus('failed');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Use IntaSend M-Pesa STK Push directly
-  const handleMpesaStkPush = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      const response = await api.initiateIntaSendStkPush({
-        transactionId,
-        phoneNumber,
-        email: email || undefined,
-      });
-
-      if (response.success && response.data) {
-        setPaymentStatus('pending');
-        
-        // Start polling for payment status
-        pollPaymentStatus();
-      } else {
-        setError(response.error || 'Failed to initiate payment');
-        setPaymentStatus('failed');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-      setPaymentStatus('failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const pollPaymentStatus = () => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await api.checkIntaSendStatus(transactionId);
-
-        const txData = response.data as { status: string };
-        if (txData.status === 'PAID') {
-          setPaymentStatus('success');
-          clearInterval(pollInterval);
-          onPaymentSuccess?.();
-        } else if (txData.status === 'CANCELLED' || txData.status === 'FAILED') {
-          setPaymentStatus('failed');
-          clearInterval(pollInterval);
-        }
-      } catch {
-        // Continue polling
-      }
-    }, 3000);
-
-    // Stop polling after 5 minutes
-    setTimeout(() => clearInterval(pollInterval), 5 * 60 * 1000);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    if (paymentMethod === 'hosted' || paymentMethod === 'card') {
-      handleHostedCheckout(e);
-    } else {
-      handleMpesaStkPush(e);
     }
   };
 
@@ -121,9 +59,9 @@ export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: Payme
           <div className="flex gap-2 mb-4">
             <button
               type="button"
-              onClick={() => setPaymentMethod('hosted')}
+              onClick={() => setPaymentMethod('all')}
               className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition ${
-                paymentMethod === 'hosted'
+                paymentMethod === 'all'
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-background text-foreground border-border hover:border-primary/50'
               }`}
@@ -157,8 +95,8 @@ export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: Payme
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email - Required for all methods */}
+          <form onSubmit={handlePaystackPayment} className="space-y-4">
+            {/* Email - Required for Paystack */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 Email Address
@@ -171,24 +109,8 @@ export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: Payme
                 required
                 className="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
               />
+              <p className="text-xs text-muted-foreground mt-1">Receipt will be sent to this email</p>
             </div>
-
-            {/* Phone - Required for M-Pesa, optional for others */}
-            {paymentMethod === 'mpesa' && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  M-Pesa Phone Number (254XXXXXXXXX)
-                </label>
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="2547xxxxxxxx"
-                  required
-                  className="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-            )}
 
             {/* Amount Display */}
             <div className="bg-muted p-3 rounded-lg">
@@ -198,15 +120,22 @@ export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: Payme
 
             {/* Payment Method Info */}
             <div className="bg-muted/50 p-3 rounded-lg text-sm text-muted-foreground">
-              {paymentMethod === 'hosted' && (
-                <p>You'll be redirected to a secure page to complete payment via M-Pesa, Card, or Bank.</p>
+              {paymentMethod === 'all' && (
+                <p>You'll be redirected to a secure page to complete payment via M-Pesa, Card, or Bank Transfer.</p>
               )}
               {paymentMethod === 'mpesa' && (
-                <p>You'll receive an M-Pesa PIN prompt on your phone to complete the payment.</p>
+                <p>You'll be redirected to complete payment via M-Pesa mobile money.</p>
               )}
               {paymentMethod === 'card' && (
                 <p>You'll be redirected to a secure page to enter your card details.</p>
               )}
+            </div>
+
+            {/* Accepted Payment Methods */}
+            <div className="flex flex-wrap gap-2">
+              <span className="px-3 py-1 bg-background border border-border rounded-lg text-xs text-muted-foreground">M-Pesa</span>
+              <span className="px-3 py-1 bg-background border border-border rounded-lg text-xs text-muted-foreground">Visa/Mastercard</span>
+              <span className="px-3 py-1 bg-background border border-border rounded-lg text-xs text-muted-foreground">Bank Transfer</span>
             </div>
 
             {error && (
@@ -217,18 +146,13 @@ export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: Payme
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !email}
               className="w-full bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
                   <Loader size={20} className="animate-spin" />
-                  Processing...
-                </>
-              ) : paymentMethod === 'mpesa' ? (
-                <>
-                  <Smartphone size={20} />
-                  Pay with M-Pesa
+                  Initializing...
                 </>
               ) : (
                 <>
@@ -237,22 +161,13 @@ export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: Payme
                 </>
               )}
             </button>
+
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck size={14} className="text-primary" />
+              <span>Secure payment powered by Paystack</span>
+            </div>
           </form>
         </>
-      )}
-
-      {paymentStatus === 'pending' && (
-        <div className="text-center py-8">
-          <div className="inline-block">
-            <Loader size={40} className="text-primary animate-spin mb-4" />
-          </div>
-          <p className="text-foreground font-medium">Waiting for payment confirmation</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            {paymentMethod === 'mpesa' 
-              ? `Check your phone (${phoneNumber}) for the M-Pesa PIN prompt`
-              : 'Processing your payment...'}
-          </p>
-        </div>
       )}
 
       {paymentStatus === 'redirecting' && (
@@ -262,7 +177,7 @@ export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: Payme
           </div>
           <p className="text-foreground font-medium">Redirecting to payment page...</p>
           <p className="text-sm text-muted-foreground mt-2">
-            If you're not redirected, <a href="#" className="text-primary underline">click here</a>
+            Please wait while we redirect you to the secure payment page.
           </p>
         </div>
       )}

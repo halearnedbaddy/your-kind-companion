@@ -84,16 +84,21 @@ export function CheckoutModal({ isOpen, onClose, product, storeSlug, onSuccess }
     setStep('processing');
 
     try {
-      const response = await api.initiatePayment(transactionId, {
-        paymentMethod,
-        phone: buyerDetails.phone,
-        buyerName: buyerDetails.name,
-        buyerEmail: buyerDetails.email,
+      // Use Paystack for payment
+      const response = await api.initiatePaystackPayment({
+        transactionId,
+        email: buyerDetails.email || `${buyerDetails.phone.replace(/\D/g, '')}@placeholder.com`,
+        metadata: {
+          buyerName: buyerDetails.name,
+          buyerPhone: buyerDetails.phone,
+          paymentMethod,
+        },
       });
 
-      if (response.success) {
-        // Redirect to payment page
-        window.location.href = `/pay/${transactionId}`;
+      if (response.success && response.data) {
+        const data = response.data as { authorizationUrl: string };
+        // Redirect to Paystack checkout
+        window.location.href = data.authorizationUrl;
       } else {
         throw new Error(response.error || 'Failed to initiate payment');
       }
