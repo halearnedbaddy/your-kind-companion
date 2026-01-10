@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* New color palette - Teal and Brown theme */
+  --teal-light: #88BDBC;
+  --teal-dark: #254E58;
+  --teal-darker: #112D32;
+  --brown-light: #6E6658;
+  --brown-dark: #4F4A41;
+  
+  /* Convert to HSL for CSS variables */
+  --background: 180 20% 95%;
+  --foreground: 195 50% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 195 50% 15%;
+  --primary: 195 50% 20%;
+  --primary-foreground: 180 30% 90%;
+  --secondary: 180 20% 85%;
+  --secondary-foreground: 195 50% 15%;
+  --muted: 180 15% 90%;
+  --muted-foreground: 195 30% 40%;
+  --accent: 180 30% 70%;
+  --accent-foreground: 195 50% 15%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 180 20% 80%;
+  --input: 180 20% 85%;
+  --ring: 195 50% 20%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 195 50% 8%;
+  --foreground: 180 20% 90%;
+  --card: 195 50% 10%;
+  --card-foreground: 180 20% 90%;
+  --primary: 180 30% 70%;
+  --primary-foreground: 195 50% 15%;
+  --secondary: 195 40% 15%;
+  --secondary-foreground: 180 20% 90%;
+  --muted: 195 40% 15%;
+  --muted-foreground: 180 20% 60%;
+  --accent: 195 40% 20%;
+  --accent-foreground: 180 20% 90%;
+  --destructive: 0 60% 40%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 195 40% 20%;
+  --input: 195 40% 20%;
+  --ring: 180 30% 60%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
