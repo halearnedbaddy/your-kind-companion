@@ -14,7 +14,6 @@ type PaymentMethod = 'mpesa' | 'card' | 'all';
 
 export function PaymentWidget({ transactionId, amount, onPaymentSuccess }: PaymentWidgetProps) {
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'redirecting' | 'success' | 'failed'>('idle');

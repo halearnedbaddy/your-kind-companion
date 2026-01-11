@@ -17,7 +17,7 @@ import { io } from "socket.io-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/services/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +56,6 @@ export function BuyerOrderDetailPage() {
     const { toast } = useToast();
     const [order, setOrder] = useState<OrderDetails | null>(null);
     const [loading, setLoading] = useState(true);
-    const [socket, setSocket] = useState<any>(null);
 
     useEffect(() => {
         fetchOrderDetails();
@@ -90,8 +89,6 @@ export function BuyerOrderDetailPage() {
             }
         });
 
-        setSocket(newSocket);
-
         return () => {
             newSocket.disconnect();
         };
@@ -103,7 +100,7 @@ export function BuyerOrderDetailPage() {
             setLoading(true);
             const res = await api.getBuyerOrderDetails(transactionId);
             if (res.success && res.data) {
-                setOrder(res.data);
+                setOrder(res.data as OrderDetails);
             } else {
                 toast({
                     title: "Error",

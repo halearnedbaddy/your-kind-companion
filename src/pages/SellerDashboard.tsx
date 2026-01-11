@@ -129,8 +129,9 @@ export function SellerDashboard() {
     setLinkLoading(false);
 
     if (res.success && res.data) {
-      const url = `${window.location.origin}/pay/${res.data.id}`;
-      setCreatedLink({ url, id: res.data.id });
+      const txData = res.data as { id: string };
+      const url = `${window.location.origin}/pay/${txData.id}`;
+      setCreatedLink({ url, id: txData.id });
       setPaymentLinkForm({ itemName: '', description: '', price: '' });
       alert('Payment link created successfully!');
     } else {
