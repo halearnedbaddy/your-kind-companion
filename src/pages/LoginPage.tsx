@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightIcon, PhoneIcon, RefreshCwIcon, MailIcon, LockIcon, ArrowLeftIcon } from '@/components/icons';
+import { ArrowRightIcon, PhoneIcon, RefreshCwIcon, MailIcon, LockIcon } from '@/components/icons';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/services/api';

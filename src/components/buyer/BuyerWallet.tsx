@@ -37,7 +37,7 @@ export function BuyerWallet({ wallet, loading, error, onRefresh, userEmail }: Bu
     
     if (topupSuccess === 'success' && reference) {
       // Verify the topup and refresh wallet
-      api.verifyPaystackPayment(reference).then(() => {
+      api.verifyPaystackPayment('topup', reference).then(() => {
         onRefresh?.();
       });
       // Clear URL params
