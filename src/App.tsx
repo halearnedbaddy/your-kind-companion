@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { CloudAuthProvider } from "@/contexts/CloudAuthContext";
 import { PaymentPage } from "./pages/PaymentPage";
 import { HomePage } from "./pages/HomePage";
 import { SellerDashboard } from "./pages/SellerDashboard";
@@ -16,7 +16,7 @@ import { BuyerOrderDetailPage } from "./pages/BuyerOrderDetailPage";
 
 function App() {
   return (
-    <AuthProvider>
+    <CloudAuthProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -34,7 +34,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+    </CloudAuthProvider>
   );
 }
 
