@@ -349,12 +349,6 @@ export function LoginPage() {
           )}
 
           <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col gap-3">
-            <a 
-              href="/admin/login" 
-              className="text-center text-sm text-gray-400 hover:text-red-500 transition-colors"
-            >
-              Admin Portal
-            </a>
           </div>
 
           <p className="mt-8 text-center text-gray-500">

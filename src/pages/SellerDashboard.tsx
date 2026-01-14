@@ -5,7 +5,7 @@ import {
   HomeIcon, ShoppingBagIcon, WalletIcon, AlertTriangleIcon, ShareIcon, SettingsIcon, HelpCircleIcon,
   MessageCircleIcon, TrendingUpIcon, PhoneIcon, MailIcon, PlusIcon, StoreIcon,
   ChevronRightIcon, BellIcon, XIcon, CheckCircleIcon, ClockIcon,
-  ArrowUpRightIcon, ArrowDownLeftIcon, CameraIcon
+  ArrowUpRightIcon, ArrowDownLeftIcon, CameraIcon, MenuIcon
 } from '@/components/icons';
 import { DisputesManagement } from '@/components/DisputesManagement';
 import { OrdersTab } from '@/components/OrdersTab';
