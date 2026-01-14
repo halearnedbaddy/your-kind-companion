@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import swiftlinersLogo from '@/assets/swiftliners-logo.png';
-import { BuyerIcon, EscrowIcon, SellerIcon, StoreIcon, LinkIcon, ArrowRightIcon, MessageCircleIcon } from '@/components/icons';
+import whatsappImg from '@/assets/images/whatsapp.png';
+import instagramImg from '@/assets/images/instagram.png';
+import facebookImg from '@/assets/images/facebook.png';
+import heroMainImg from '@/assets/images/hero-main.png';
+import { BuyerIcon, EscrowIcon, SellerIcon, StoreIcon, LinkIcon, ArrowRightIcon } from '@/components/icons';
 
 type Screen = 'splash' | 'onboarding1' | 'onboarding2' | 'onboarding3';
 
@@ -202,46 +206,51 @@ export function HomePage() {
           <div className="max-w-lg mx-auto text-center">
             {/* Visual: Social platforms with payment flow */}
             <div className="mb-12 relative">
-              <div className="flex items-center justify-center">
-                {/* Payment link origin */}
-                <div className="relative">
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-[#254E58]/30 border-2 border-[#88BDBC]/40 flex items-center justify-center backdrop-blur-sm">
-                    <LinkIcon className="text-[#88BDBC]" size={32} />
-                  </div>
-                  
-                  {/* Flow lines to social icons */}
-                  <div className="absolute top-1/2 left-full w-8 md:w-12 h-0.5 bg-[#88BDBC]/50" />
+              <div className="flex flex-col items-center justify-center gap-8">
+                {/* Main Hero Image */}
+                <div className="relative w-full max-w-[280px] aspect-video rounded-2xl overflow-hidden border-2 border-[#88BDBC]/40 shadow-2xl">
+                  <img src={heroMainImg} alt="Hero Main" className="w-full h-full object-cover" />
                 </div>
 
-                {/* Social platforms */}
-                <div className="flex flex-col gap-3 ml-8 md:ml-12">
-                  {/* WhatsApp */}
-                  <div className="flex items-center gap-3 bg-[#254E58]/20 rounded-xl px-4 py-2 border border-[#88BDBC]/30">
-                    <div className="w-8 h-8 rounded-lg bg-[#88BDBC] flex items-center justify-center">
-                      <MessageCircleIcon className="text-[#112D32]" size={18} />
+                <div className="flex items-center justify-center">
+                  {/* Payment link origin */}
+                  <div className="relative">
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-[#254E58]/30 border-2 border-[#88BDBC]/40 flex items-center justify-center backdrop-blur-sm">
+                      <LinkIcon className="text-[#88BDBC]" size={28} />
                     </div>
-                    <span className="text-[#88BDBC] text-sm font-medium">WhatsApp</span>
+                    
+                    {/* Flow lines to social icons */}
+                    <div className="absolute top-1/2 left-full w-6 md:w-10 h-0.5 bg-[#88BDBC]/50" />
                   </div>
 
-                  {/* Instagram */}
-                  <div className="flex items-center gap-3 bg-[#254E58]/20 rounded-xl px-4 py-2 border border-[#88BDBC]/30">
-                    <div className="w-8 h-8 rounded-lg bg-[#6E6658] flex items-center justify-center">
-                      <span className="text-white text-sm font-bold">IG</span>
+                  {/* Social platforms */}
+                  <div className="flex flex-col gap-2 ml-6 md:ml-10">
+                    {/* WhatsApp */}
+                    <div className="flex items-center gap-3 bg-[#254E58]/20 rounded-xl px-3 py-1.5 border border-[#88BDBC]/30">
+                      <div className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center">
+                        <img src={whatsappImg} alt="WhatsApp" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-[#88BDBC] text-xs font-medium">WhatsApp</span>
                     </div>
-                    <span className="text-[#88BDBC] text-sm font-medium">Instagram</span>
-                  </div>
 
-                  {/* Anywhere */}
-                  <div className="flex items-center gap-3 bg-[#254E58]/20 rounded-xl px-4 py-2 border border-[#88BDBC]/30">
-                    <div className="w-8 h-8 rounded-lg bg-[#4F4A41] flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">+</span>
+                    {/* Instagram */}
+                    <div className="flex items-center gap-3 bg-[#254E58]/20 rounded-xl px-3 py-1.5 border border-[#88BDBC]/30">
+                      <div className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center">
+                        <img src={instagramImg} alt="Instagram" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-[#88BDBC] text-xs font-medium">Instagram</span>
                     </div>
-                    <span className="text-[#88BDBC] text-sm font-medium">Anywhere</span>
+
+                    {/* Facebook */}
+                    <div className="flex items-center gap-3 bg-[#254E58]/20 rounded-xl px-3 py-1.5 border border-[#88BDBC]/30">
+                      <div className="w-6 h-6 rounded-lg overflow-hidden flex items-center justify-center">
+                        <img src={facebookImg} alt="Facebook" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-[#88BDBC] text-xs font-medium">Facebook</span>
+                    </div>
                   </div>
                 </div>
               </div>
-
-            
             </div>
 
             {/* Headline */}
