@@ -14,8 +14,10 @@ interface CloudAuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { email: string; password: string; name: string; role?: string }) => Promise<{ success: boolean; error?: string }>;
+  register: (data: { email: string; password: string; name: string; role?: string; phone?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const CloudAuthContext = createContext<CloudAuthContextType | null>(null);
@@ -26,7 +28,7 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Load user profile from database
-  const loadUserProfile = useCallback(async (userId: string, email?: string) => {
+  const loadUserProfile = useCallback(async (userId: string, email?: string, phone?: string) => {
     try {
       const { data: profile } = await supabase
         .from("profiles")
@@ -40,7 +42,7 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
           email: email || profile.email || undefined,
           name: profile.name,
           role: profile.role as "BUYER" | "SELLER" | "ADMIN",
-          phone: profile.phone || undefined,
+          phone: phone || profile.phone || undefined,
         };
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
@@ -60,7 +62,11 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
         if (currentSession?.user) {
           // Defer profile loading to avoid blocking auth state
           setTimeout(() => {
-            loadUserProfile(currentSession.user.id, currentSession.user.email);
+            loadUserProfile(
+              currentSession.user.id, 
+              currentSession.user.email,
+              currentSession.user.phone
+            );
           }, 0);
         } else {
           setUser(null);
@@ -75,7 +81,11 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       setSession(existingSession);
       if (existingSession?.user) {
-        loadUserProfile(existingSession.user.id, existingSession.user.email);
+        loadUserProfile(
+          existingSession.user.id, 
+          existingSession.user.email,
+          existingSession.user.phone
+        );
       }
       setIsLoading(false);
     });
@@ -95,7 +105,7 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
     return { success: false, error: response.error || 'Login failed' };
   }, []);
 
-  const register = useCallback(async (data: { email: string; password: string; name: string; role?: string }) => {
+  const register = useCallback(async (data: { email: string; password: string; name: string; role?: string; phone?: string }) => {
     const response = await cloudApi.registerWithEmail(data);
     if (response.success && response.data) {
       setUser(response.data.user);
@@ -112,6 +122,21 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   }, []);
 
+  const sendOtp = useCallback(async (phone: string) => {
+    const response = await cloudApi.sendPhoneOtp(phone);
+    return response;
+  }, []);
+
+  const verifyOtp = useCallback(async (phone: string, token: string) => {
+    const response = await cloudApi.verifyPhoneOtp(phone, token);
+    if (response.success && response.data) {
+      setUser(response.data.user);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      return { success: true };
+    }
+    return { success: false, error: response.error || 'OTP verification failed' };
+  }, []);
+
   return (
     <CloudAuthContext.Provider
       value={{
@@ -122,6 +147,8 @@ export function CloudAuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        sendOtp,
+        verifyOtp,
       }}
     >
       {children}

@@ -111,7 +111,7 @@ export interface SocialAccount {
 class CloudApiService {
   // ==================== AUTH ====================
   
-  async registerWithEmail(data: { email: string; password: string; name: string; role?: string }): Promise<ApiResponse<{ user: User }>> {
+  async registerWithEmail(data: { email: string; password: string; name: string; role?: string; phone?: string }): Promise<ApiResponse<{ user: User }>> {
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
@@ -121,6 +121,7 @@ class CloudApiService {
           data: {
             name: data.name,
             role: data.role || "BUYER",
+            phone: data.phone,
           },
         },
       });
@@ -133,11 +134,12 @@ class CloudApiService {
         return { success: false, error: "Failed to create user" };
       }
 
-      // Create profile
+      // Create profile with phone
       const { error: profileError } = await supabase.from("profiles").insert({
         user_id: authData.user.id,
         name: data.name,
         email: data.email,
+        phone: data.phone || null,
         role: data.role || "BUYER",
       });
 
@@ -157,12 +159,84 @@ class CloudApiService {
         id: authData.user.id,
         email: data.email,
         name: data.name,
+        phone: data.phone,
         role: (data.role as "BUYER" | "SELLER" | "ADMIN") || "BUYER",
       };
 
       return { success: true, data: { user } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Registration failed" };
+    }
+  }
+
+  // ==================== PHONE OTP AUTH ====================
+
+  async sendPhoneOtp(phone: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // First check if phone exists in profiles
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, name, role")
+        .eq("phone", phone)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: "Failed to lookup phone number" };
+      }
+
+      if (!profile) {
+        return { success: false, error: "Phone number not registered. Please sign up first." };
+      }
+
+      // Send OTP via Supabase Auth
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: phone,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Failed to send OTP" };
+    }
+  }
+
+  async verifyPhoneOtp(phone: string, token: string): Promise<ApiResponse<{ user: User }>> {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.verifyOtp({
+        phone: phone,
+        token: token,
+        type: 'sms',
+      });
+
+      if (authError) {
+        return { success: false, error: authError.message };
+      }
+
+      if (!authData.user) {
+        return { success: false, error: "OTP verification failed" };
+      }
+
+      // Get profile by phone
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("phone", phone)
+        .maybeSingle();
+
+      const user: User = {
+        id: authData.user.id,
+        email: profile?.email || undefined,
+        name: profile?.name || "User",
+        phone: phone,
+        role: (profile?.role as "BUYER" | "SELLER" | "ADMIN") || "BUYER",
+      };
+
+      return { success: true, data: { user } };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "OTP verification failed" };
     }
   }
 
