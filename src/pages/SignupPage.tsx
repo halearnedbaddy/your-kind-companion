@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircleIcon, ArrowRightIcon, BuyerIcon, ShoppingBagIcon, MailIcon, LockIcon, ArrowLeftIcon } from '@/components/icons';
+import { CheckCircleIcon, ArrowRightIcon, BuyerIcon, ShoppingBagIcon, MailIcon, LockIcon, ArrowLeftIcon, PhoneIcon } from '@/components/icons';
 import { z } from 'zod';
 import { useCloudAuth } from '@/contexts/CloudAuthContext';
 
@@ -16,6 +16,7 @@ export function SignupPage() {
     email: z.string().email('Enter a valid email address'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
+    phone: z.string().regex(/^\+254[17]\d{8}$/, 'Enter a valid Kenyan phone number (e.g., +254712345678)').optional().or(z.literal('')),
   }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
@@ -25,6 +26,7 @@ export function SignupPage() {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
   });
@@ -42,6 +44,7 @@ export function SignupPage() {
       email: formData.email,
       password: formData.password,
       confirmPassword: formData.confirmPassword,
+      phone: formData.phone || undefined,
     });
 
     if (!parsed.success) {
@@ -61,6 +64,7 @@ export function SignupPage() {
         email: formData.email,
         password: formData.password,
         name: `${formData.firstName} ${formData.lastName}`.trim(),
+        phone: formData.phone || undefined,
         role: role || 'BUYER',
       });
 
@@ -167,7 +171,7 @@ export function SignupPage() {
 
           {/* Step 2: Details Form */}
           {step === 'details' && (
-            <form onSubmit={handleEmailRegister} className="space-y-6 animate-in slide-in-from-right duration-300">
+            <form onSubmit={handleEmailRegister} className="space-y-5 animate-in slide-in-from-right duration-300">
               <div className="flex items-center gap-2 mb-6">
                 <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#88BDBC]/20 text-[#254E58]">
                   {role === 'BUYER' ? 'Buyer' : 'Seller'} Account
@@ -213,6 +217,25 @@ export function SignupPage() {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Phone Number <span className="text-gray-400 font-normal">(for OTP login)</span>
+                </label>
+                <div className="relative">
+                  <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6E6658]" size={20} />
+                  <input
+                    type="tel"
+                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-black transition"
+                    placeholder="+254712345678"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Optional. Add your phone to enable one-time password login.
+                </p>
               </div>
 
               <div>
