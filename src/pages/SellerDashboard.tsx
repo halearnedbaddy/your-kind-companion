@@ -54,6 +54,7 @@ export function SellerDashboard() {
   const [shareModal, setShareModal] = useState(false);
   const [showCreateStoreModal, setShowCreateStoreModal] = useState(false);
   const [showStoreDashboard, setShowStoreDashboard] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Empty data states - ready for API integration
   const [orders] = useState<Order[]>([]);
@@ -1167,87 +1168,107 @@ export function SellerDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans">
-      {/* Dark Navy Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-56 bg-[#1e293b] flex flex-col z-30">
-        {/* Logo Header */}
-        <div className="p-4 border-b border-slate-700">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center cursor-pointer" onClick={() => navigate('/')}>
-              <StoreIcon className="text-white" size={18} />
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 w-64 bg-[#112D32] flex flex-col z-50 transform transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-[#254E58] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#88BDBC] rounded-xl flex items-center justify-center shadow-lg shadow-[#88BDBC]/20">
+              <StoreIcon className="text-[#112D32]" size={24} />
             </div>
-            <span className="text-white font-bold text-lg">SWIFTLINE</span>
+            <span className="text-white font-black text-xl tracking-tight">SWIFTLINE</span>
           </div>
+          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-[#88BDBC] p-2 hover:bg-[#254E58]/30 rounded-lg">
+            <XIcon size={24} />
+          </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                  : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
-                  }`}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 ${
+                  isActive
+                    ? 'bg-[#88BDBC] text-[#112D32] shadow-lg shadow-[#88BDBC]/20'
+                    : 'text-[#88BDBC]/60 hover:bg-[#254E58]/30 hover:text-[#88BDBC]'
+                }`}
               >
-                <Icon size={18} />
+                <Icon size={20} />
                 <span>{item.label}</span>
+                {isActive && <ChevronRightIcon className="ml-auto" size={16} />}
               </button>
             );
           })}
         </nav>
 
-        {/* Logout Button */}
-        <div className="p-3 border-t border-slate-700">
-          <button
-            onClick={() => navigate('/')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 transition"
-          >
-            <XIcon size={18} />
-            <span>Logout</span>
-          </button>
-        </div>
-
-        {/* User Profile */}
-        <div className="p-4 border-t border-slate-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-              {profile.name.charAt(0).toUpperCase()}
+        {/* Profile/Footer Area */}
+        <div className="p-4 border-t border-[#254E58] bg-[#112D32]/50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-[#254E58] rounded-full flex items-center justify-center text-[#88BDBC] font-bold">
+              {profile.name.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{profile.name}</p>
-              <p className="text-slate-400 text-xs truncate">Seller</p>
+              <p className="text-white text-sm font-bold truncate">{profile.name}</p>
+              <p className="text-[#88BDBC]/60 text-xs truncate">Seller Account</p>
             </div>
           </div>
+          <button
+            onClick={() => {
+              localStorage.clear();
+              navigate('/');
+            }}
+            className="w-full flex items-center justify-center gap-2 py-2 text-sm font-bold text-red-400 hover:text-red-300 transition"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 ml-56 min-h-screen">
+      <div className="flex-1 lg:ml-64 min-h-screen">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
-          <h1 className="text-lg font-semibold text-gray-900">
-            {activeTab === 'home' && 'Home'}
-            {activeTab === 'orders' && 'Orders'}
-            {activeTab === 'wallet' && 'Wallet'}
-            {activeTab === 'disputes' && 'Disputes'}
-            {activeTab === 'create_link' && 'Create Link'}
-            {activeTab === 'store' && 'Store Settings'}
-            {activeTab === 'ai_drafts' && 'AI Drafts'}
-            {activeTab === 'published' && 'Published Products'}
-            {activeTab === 'sync_logs' && 'Sync Logs'}
-            {activeTab === 'social' && 'Social Links'}
-            {activeTab === 'settings' && 'Settings'}
-            {activeTab === 'support' && 'Support'}
-          </h1>
+        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-4">
-            <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
-              <BellIcon size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border-2 border-white"></span>
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition"
+            >
+              <MenuIcon size={24} />
             </button>
+            <h1 className="text-xl font-black text-[#112D32] hidden md:block">
+              {navItems.find(i => i.id === activeTab)?.label}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3 md:gap-6">
+            <button className="p-2 text-[#254E58] hover:bg-gray-100 rounded-full transition relative">
+              <BellIcon size={24} />
+              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+            </button>
+            <div className="h-8 w-px bg-gray-200 hidden md:block"></div>
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden md:block">
+                <p className="text-sm font-bold text-[#112D32]">{profile.name}</p>
+                <div className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                  <p className="text-[10px] text-gray-500 font-medium">ONLINE</p>
+                </div>
+              </div>
+            </div>
           </div>
         </header>
 

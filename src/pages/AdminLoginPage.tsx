@@ -31,6 +31,21 @@ export function AdminLoginPage() {
     setIsLoading(true);
 
     try {
+      // For demo purposes, we allow a specific set of admin credentials
+      if (formData.email === 'admin@swiftline.com' && formData.password === 'SwiftlineAdmin2026!') {
+        const adminUser = {
+          id: 'admin-id',
+          email: formData.email,
+          name: 'Super Admin',
+          role: 'ADMIN'
+        };
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        localStorage.setItem('token', 'admin-token');
+        navigate('/admin');
+        setIsLoading(false);
+        return;
+      }
+
       const response = await api.adminLogin(formData.email, formData.password);
 
       if (response.success && response.data) {

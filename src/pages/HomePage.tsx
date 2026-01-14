@@ -40,7 +40,7 @@ export function HomePage() {
   };
 
   const handleSkip = () => {
-    navigate('/login');
+    navigate('/signup');
   };
 
   const handleGetStarted = () => {
