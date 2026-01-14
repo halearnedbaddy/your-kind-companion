@@ -32,10 +32,10 @@ export function AdminLoginPage() {
 
     try {
       // For demo purposes, we allow a specific set of admin credentials
-      if (formData.email === 'admin@swiftline.com' && formData.password === 'SwiftlineAdmin2026!') {
+      if (formData.email.trim().toLowerCase() === 'admin@swiftline.com' && formData.password === 'SwiftlineAdmin2026!') {
         const adminUser = {
           id: 'admin-id',
-          email: formData.email,
+          email: formData.email.trim().toLowerCase(),
           name: 'Super Admin',
           role: 'ADMIN'
         };
