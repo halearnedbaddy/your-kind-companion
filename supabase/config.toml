@@ -2,3 +2,15 @@ project_id = "riohxkjlfanyzlnewjkt"
 
 [functions.ai-generate-product]
 verify_jwt = false
+
+[functions.store-api]
+verify_jwt = false
+
+[functions.transaction-api]
+verify_jwt = false
+
+[functions.wallet-api]
+verify_jwt = false
+
+[functions.storefront-api]
+verify_jwt = false
