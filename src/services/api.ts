@@ -7,9 +7,9 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || (() => {
       const protocol = url.protocol;
 
       // In Replit, convert dev domain from 5000 port to 8000 port
-      // E.g., c4077ec9-...-5000-...picard.replit.dev -> c4077ec9-...-8000-...picard.replit.dev
       if (hostname.includes('replit.dev')) {
-        const backendDomain = hostname.replace(/-5000-/, '-8000-');
+        // Handle both -5000- and direct subdomain patterns
+        const backendDomain = hostname.replace(/\d+/, '8000');
         return `${protocol}//${backendDomain}`;
       }
 

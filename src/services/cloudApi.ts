@@ -173,8 +173,20 @@ class CloudApiService {
 
   async sendPhoneOtp(phone: string): Promise<{ success: boolean; error?: string }> {
     try {
+      const url = new URL(window.location.href);
+      const hostname = url.hostname;
+      const protocol = url.protocol;
+      let backendUrl = '';
+
+      if (hostname.includes('replit.dev')) {
+        const backendDomain = hostname.replace(/\d+/, '8000');
+        backendUrl = `${protocol}//${backendDomain}`;
+      } else {
+        backendUrl = `${protocol}//${hostname}:8000`;
+      }
+
       // Use the external backend to send SMS via the new provider
-      const response = await fetch(`${window.location.origin.replace(/-5000-/, '-8000-')}/api/v1/auth/otp/request`, {
+      const response = await fetch(`${backendUrl}/api/v1/auth/otp/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, purpose: 'LOGIN' })
