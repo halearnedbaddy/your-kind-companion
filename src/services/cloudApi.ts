@@ -173,25 +173,40 @@ class CloudApiService {
 
   async sendPhoneOtp(phone: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = new URL(window.location.href);
-      const hostname = url.hostname;
-      const protocol = url.protocol;
+      const hostname = window.location.hostname;
+      const protocol = window.location.protocol;
       let backendUrl = '';
 
-      if (hostname.includes('replit.dev')) {
-        const backendDomain = hostname.replace('5000', '8000');
-        backendUrl = `${protocol}//${backendDomain}`;
-      } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        backendUrl = `${protocol}//127.0.0.1:8000`;
-      } else {
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
         backendUrl = `${protocol}//${hostname}:8000`;
+      } else {
+        // Replit environment: standard pattern is project-port.id.replit.dev
+        // We need to change the port part to 8000
+        const parts = hostname.split('.');
+        const subDomain = parts[0];
+        
+        // Find where the port is (usually ends in -5000 or -5001)
+        if (subDomain.includes('-')) {
+          const subParts = subDomain.split('-');
+          const lastPart = subParts[subParts.length - 1];
+          if (!isNaN(Number(lastPart))) {
+            subParts[subParts.length - 1] = '8000';
+            const newSubDomain = subParts.join('-');
+            backendUrl = `${protocol}//${newSubDomain}.${parts.slice(1).join('.')}`;
+          } else {
+            backendUrl = `${protocol}//${subDomain}-8000.${parts.slice(1).join('.')}`;
+          }
+        } else {
+          backendUrl = `${protocol}//${hostname}-8000.replit.dev`; // Fallback
+        }
       }
 
       // Use the external backend to send SMS via the new provider
+      const phoneClean = phone.replace(/\+/g, '').replace(/\s/g, '');
       const response = await fetch(`${backendUrl}/api/v1/auth/otp/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phone.replace(/\+/g, '').replace(/\s/g, ''), purpose: 'LOGIN' })
+        body: JSON.stringify({ phone: phoneClean, purpose: 'LOGIN' })
       }).catch(err => {
         console.error('Fetch error:', err);
         throw new Error('Could not connect to the backend server. Please try again.');
@@ -199,7 +214,7 @@ class CloudApiService {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Backend error response:', errorText, 'Status:', response.status);
+        console.error('Backend error response:', errorText, 'Status:', response.status, 'URL:', `${backendUrl}/api/v1/auth/otp/request`);
         return { success: false, error: `Server error: ${response.status}. Please check backend logs.` };
       }
 
