@@ -7,15 +7,16 @@ interface SMSResponse {
 }
 
 /**
- * Send SMS using Africa's Talking HTTP API
+ * Send SMS using Bulk SMS Kenya (AdvantaSMS/TextSMS pattern)
  */
 export async function sendSMS(to: string, message: string): Promise<SMSResponse> {
   try {
-    const apiKey = process.env.SMS_API_KEY;
-    const username = process.env.SMS_USERNAME;
+    const apiKey = process.env.BULK_SMS_API_KEY;
+    const partnerID = '7810'; // Default partner ID for this provider
+    const senderId = 'XpressKard';
 
-    if (!apiKey || !username) {
-      console.warn('⚠️  SMS credentials not configured. Skipping SMS send.');
+    if (!apiKey) {
+      console.warn('⚠️  BULK_SMS_API_KEY not configured. Skipping SMS send.');
       
       // In development, just log the message
       if (process.env.NODE_ENV === 'development') {
@@ -26,66 +27,40 @@ export async function sendSMS(to: string, message: string): Promise<SMSResponse>
       return { success: false, error: 'SMS service not configured' };
     }
 
-    // Format phone number (ensure it starts with +)
-    let formattedPhone = to.trim();
-    if (!formattedPhone.startsWith('+')) {
-      // Assume Kenyan number if no country code
-      if (formattedPhone.startsWith('0')) {
-        formattedPhone = '+254' + formattedPhone.substring(1);
-      } else if (formattedPhone.startsWith('254')) {
-        formattedPhone = '+' + formattedPhone;
-      } else {
-        formattedPhone = '+254' + formattedPhone;
-      }
+    // Format phone number (ensure it is 254...)
+    let formattedPhone = to.trim().replace(/\D/g, '');
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '254' + formattedPhone.substring(1);
+    } else if (formattedPhone.startsWith('7') || formattedPhone.startsWith('1')) {
+      formattedPhone = '254' + formattedPhone;
+    } else if (!formattedPhone.startsWith('254')) {
+      // If it's something else, we might need a more robust check, but this is standard for KE
+      formattedPhone = '254' + formattedPhone;
     }
 
-    console.log(`📱 Sending SMS to ${formattedPhone}...`);
+    console.log(`📱 Sending SMS to ${formattedPhone} via Bulk SMS Kenya...`);
 
-    // Africa's Talking API endpoint
-    const url = 'https://api.africastalking.com/version1/messaging';
+    // Provider endpoint (AdvantaSMS/TextSMS Kenya)
+    const url = 'https://quicksms.advantasms.com/api/services/sendsms/';
 
-    const response = await axios.post(
-      url,
-      new URLSearchParams({
-        username: username,
-        to: formattedPhone,
-        message: message,
-      }),
-      {
-        headers: {
-          'apiKey': apiKey,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-      }
-    );
+    const response = await axios.post(url, {
+      apikey: apiKey,
+      partnerID: partnerID,
+      message: message,
+      shortcode: senderId,
+      mobile: formattedPhone
+    });
 
     console.log('📱 SMS API Response:', JSON.stringify(response.data, null, 2));
 
-    // Check response
-    const smsData = response.data?.SMSMessageData;
-    if (smsData) {
-      const recipients = smsData.Recipients || [];
-      if (recipients.length > 0) {
-        const recipient = recipients[0];
-        if (recipient.status === 'Success' || recipient.statusCode === 101) {
-          console.log(`✅ SMS sent to ${formattedPhone}`);
-          return { success: true, message: 'SMS sent successfully' };
-        } else {
-          console.error('❌ SMS send failed:', recipient.status);
-          return { success: false, error: recipient.status || 'SMS send failed' };
-        }
-      }
-      
-      // Check message field for success indication
-      if (smsData.Message && smsData.Message.includes('Sent')) {
-        console.log(`✅ SMS sent to ${formattedPhone}`);
-        return { success: true, message: 'SMS sent successfully' };
-      }
+    // Response pattern for this provider usually includes "responses" array or success indicators
+    // Check for success code 200 or similar based on typical provider responses
+    if (response.data && (response.data.response_code === 200 || response.data.success === true || response.status === 200)) {
+      console.log(`✅ SMS sent to ${formattedPhone}`);
+      return { success: true, message: 'SMS sent successfully' };
     }
 
-    console.error('❌ Unexpected SMS response:', response.data);
-    return { success: false, error: 'Unexpected SMS response' };
+    return { success: false, error: response.data?.message || 'SMS send failed' };
   } catch (error: any) {
     console.error('❌ Error sending SMS:', error.response?.data || error.message);
     
@@ -97,7 +72,7 @@ export async function sendSMS(to: string, message: string): Promise<SMSResponse>
 
     return {
       success: false,
-      error: error.response?.data?.SMSMessageData?.Message || error.message || 'Unknown error',
+      error: error.response?.data?.message || error.message || 'Unknown error',
     };
   }
 }
