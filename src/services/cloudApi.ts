@@ -173,91 +173,50 @@ class CloudApiService {
 
   async sendPhoneOtp(phone: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const hostname = window.location.hostname;
-      const protocol = window.location.protocol;
-      let backendUrl = '';
-
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        backendUrl = `${protocol}//${hostname}:8000`;
-      } else {
-        // Replit environment: standard pattern is project-port.id.replit.dev
-        // We need to change the port part to 8000
-        const parts = hostname.split('.');
-        const subDomain = parts[0];
-        
-        // Find where the port is (usually ends in -5000 or -5001)
-        if (subDomain.includes('-')) {
-          const subParts = subDomain.split('-');
-          const lastPart = subParts[subParts.length - 1];
-          if (!isNaN(Number(lastPart))) {
-            subParts[subParts.length - 1] = '8000';
-            const newSubDomain = subParts.join('-');
-            backendUrl = `${protocol}//${newSubDomain}.${parts.slice(1).join('.')}`;
-          } else {
-            backendUrl = `${protocol}//${subDomain}-8000.${parts.slice(1).join('.')}`;
-          }
-        } else {
-          backendUrl = `${protocol}//${hostname}-8000.replit.dev`; // Fallback
-        }
-      }
-
-      // Use the external backend to send SMS via the new provider
-      const phoneClean = phone.replace(/\+/g, '').replace(/\s/g, '');
-      const response = await fetch(`${backendUrl}/api/v1/auth/otp/request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneClean, purpose: 'LOGIN' })
-      }).catch(err => {
-        console.error('Fetch error:', err);
-        throw new Error('Could not connect to the backend server. Please try again.');
+      const { data, error } = await supabase.functions.invoke('otp-sms', {
+        body: { action: 'send', phone }
       });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Backend error response:', errorText, 'Status:', response.status, 'URL:', `${backendUrl}/api/v1/auth/otp/request`);
-        return { success: false, error: `Server error: ${response.status}. Please check backend logs.` };
+
+      if (error) {
+        console.error('OTP send error:', error);
+        return { success: false, error: error.message || 'Failed to send OTP' };
       }
 
-      const data = await response.json();
-      return { success: data.success, error: data.error };
+      return { success: data?.success ?? false, error: data?.error };
     } catch (error) {
+      console.error('OTP send exception:', error);
       return { success: false, error: error instanceof Error ? error.message : "Failed to send OTP" };
     }
   }
 
   async verifyPhoneOtp(phone: string, token: string): Promise<ApiResponse<{ user: User }>> {
     try {
-      const { data: authData, error: authError } = await supabase.auth.verifyOtp({
-        phone: phone,
-        token: token,
-        type: 'sms',
+      const { data, error } = await supabase.functions.invoke('otp-sms', {
+        body: { action: 'verify', phone, code: token }
       });
 
-      if (authError) {
-        return { success: false, error: authError.message };
+      if (error) {
+        console.error('OTP verify error:', error);
+        return { success: false, error: error.message || 'Failed to verify OTP' };
       }
 
-      if (!authData.user) {
-        return { success: false, error: "OTP verification failed" };
+      if (!data?.success) {
+        return { success: false, error: data?.error || 'OTP verification failed' };
       }
 
-      // Get profile by phone
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("phone", phone)
-        .maybeSingle();
-
+      // OTP verified - sign in using email/password stored in profile
+      // For now, return the user data from the edge function
       const user: User = {
-        id: authData.user.id,
-        email: profile?.email || undefined,
-        name: profile?.name || "User",
+        id: data.user.id,
+        email: data.user.email || undefined,
+        name: data.user.name || "User",
         phone: phone,
-        role: (profile?.role as "BUYER" | "SELLER" | "ADMIN") || "BUYER",
+        role: (data.user.role as "BUYER" | "SELLER" | "ADMIN") || "BUYER",
       };
 
       return { success: true, data: { user } };
     } catch (error) {
+      console.error('OTP verify exception:', error);
       return { success: false, error: error instanceof Error ? error.message : "OTP verification failed" };
     }
   }
