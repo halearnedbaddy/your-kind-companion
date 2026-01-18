@@ -173,31 +173,15 @@ class CloudApiService {
 
   async sendPhoneOtp(phone: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // First check if phone exists in profiles
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("user_id, name, role")
-        .eq("phone", phone)
-        .maybeSingle();
-
-      if (profileError) {
-        return { success: false, error: "Failed to lookup phone number" };
-      }
-
-      if (!profile) {
-        return { success: false, error: "Phone number not registered. Please sign up first." };
-      }
-
-      // Send OTP via Supabase Auth
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: phone,
+      // Use the external backend to send SMS via the new provider
+      const response = await fetch(`${window.location.origin.replace(/-5000-/, '-8000-')}/api/v1/auth/otp/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, purpose: 'LOGIN' })
       });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
+      
+      const data = await response.json();
+      return { success: data.success, error: data.error };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Failed to send OTP" };
     }
