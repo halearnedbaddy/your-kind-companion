@@ -179,8 +179,10 @@ class CloudApiService {
       let backendUrl = '';
 
       if (hostname.includes('replit.dev')) {
-        const backendDomain = hostname.replace(/\d+/, '8000');
+        const backendDomain = hostname.replace('5000', '8000');
         backendUrl = `${protocol}//${backendDomain}`;
+      } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        backendUrl = `${protocol}//127.0.0.1:8000`;
       } else {
         backendUrl = `${protocol}//${hostname}:8000`;
       }

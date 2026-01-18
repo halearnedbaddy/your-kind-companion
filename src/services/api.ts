@@ -9,15 +9,12 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || (() => {
       // In Replit, convert dev domain from 5000 port to 8000 port
       if (hostname.includes('replit.dev')) {
         // Handle both -5000- and direct subdomain patterns
-        const backendDomain = hostname.replace(/\d+/, '8000');
+        // We need to ensure we're targeting the correct backend port
+        const backendDomain = hostname.replace('5000', '8000');
         return `${protocol}//${backendDomain}`;
-      }
-
-      // For localhost/127.0.0.1 development - use http://127.0.0.1:8000
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return `${protocol}//127.0.0.1:8000`;
       }
-
       return `${protocol}//${hostname}:8000`;
     } catch {
       return 'http://127.0.0.1:8000';
