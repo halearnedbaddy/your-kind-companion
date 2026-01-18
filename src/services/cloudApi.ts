@@ -191,7 +191,7 @@ class CloudApiService {
       const response = await fetch(`${backendUrl}/api/v1/auth/otp/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, purpose: 'LOGIN' })
+        body: JSON.stringify({ phone: phone.replace(/\+/g, '').replace(/\s/g, ''), purpose: 'LOGIN' })
       }).catch(err => {
         console.error('Fetch error:', err);
         throw new Error('Could not connect to the backend server. Please try again.');
@@ -199,8 +199,8 @@ class CloudApiService {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Backend error response:', errorText);
-        return { success: false, error: `Server error: ${response.status}` };
+        console.error('Backend error response:', errorText, 'Status:', response.status);
+        return { success: false, error: `Server error: ${response.status}. Please check backend logs.` };
       }
 
       const data = await response.json();
