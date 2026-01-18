@@ -192,8 +192,17 @@ class CloudApiService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, purpose: 'LOGIN' })
+      }).catch(err => {
+        console.error('Fetch error:', err);
+        throw new Error('Could not connect to the backend server. Please try again.');
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error response:', errorText);
+        return { success: false, error: `Server error: ${response.status}` };
+      }
+
       const data = await response.json();
       return { success: data.success, error: data.error };
     } catch (error) {

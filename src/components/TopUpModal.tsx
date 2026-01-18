@@ -86,91 +86,75 @@ export function TopUpModal({ isOpen, onClose, userEmail }: TopUpModalProps) {
           <p className="text-gray-500 text-sm mt-1">Add funds securely to your SWIFTLINE wallet.</p>
         </div>
 
-        <form onSubmit={handleTopUp} className="space-y-6">
+        <form onSubmit={handleTopUp} className="space-y-4">
           {/* Quick Amount Buttons */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Quick Select</label>
-            <div className="flex flex-wrap gap-2">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">Quick Select</label>
+            <div className="grid grid-cols-3 gap-2">
               {quickAmounts.map((amt) => (
                 <button
                   key={amt}
                   type="button"
                   onClick={() => setAmount(amt.toString())}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`py-2 rounded-lg text-xs font-bold transition ${
                     amount === amt.toString()
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-emerald-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  KES {amt.toLocaleString()}
+                  {amt.toLocaleString()}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Amount Input */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Amount (KES)</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">KES</span>
-              <input
-                type="number"
-                required
-                min="100"
-                placeholder="Enter amount"
-                className="w-full pl-14 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition font-bold text-lg"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">Amount</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">KES</span>
+                <input
+                  type="number"
+                  required
+                  min="100"
+                  className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition font-bold text-sm"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Minimum: KES 100</p>
-          </div>
 
-          {/* Email Input */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-            <input
-              type="email"
-              required
-              placeholder="your@email.com"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-500 transition"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <p className="text-xs text-gray-500 mt-1">Receipt will be sent to this email</p>
-          </div>
-
-          {/* Payment Methods Info */}
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Accepted Payment Methods</p>
-            <div className="flex flex-wrap gap-2">
-              <span className="px-3 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-600">M-Pesa</span>
-              <span className="px-3 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-600">Visa/Mastercard</span>
-              <span className="px-3 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-600">Bank Transfer</span>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">Email</label>
+              <input
+                type="email"
+                required
+                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-500 transition text-sm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
           </div>
 
           <button
             type="submit"
             disabled={isProcessing || !amount}
-            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl hover:bg-emerald-700 hover:shadow-lg transition transform hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-xl hover:bg-emerald-700 transition transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 text-sm"
           >
             {isProcessing ? (
-              <>
-                <LoaderIcon size={20} className="animate-spin" />
-                Processing...
-              </>
+              <LoaderIcon size={18} className="animate-spin" />
             ) : (
               <>
-                Top Up KES {amount ? Number(amount).toLocaleString() : '0'}
-                <ArrowRightIcon size={20} />
+                Pay KES {amount ? Number(amount).toLocaleString() : '0'}
+                <ArrowRightIcon size={18} />
               </>
             )}
           </button>
 
-          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-            <ShieldIcon size={14} className="text-emerald-600" />
-            <span>Secure payment powered by Paystack</span>
+          <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400">
+            <ShieldIcon size={12} className="text-emerald-600" />
+            <span>Secure via Paystack</span>
           </div>
         </form>
       </div>
