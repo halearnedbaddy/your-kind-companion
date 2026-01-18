@@ -177,7 +177,7 @@ router.get('/verify/:reference', optionalAuth, async (req, res) => {
 
     const result = await paystackService.verifyTransaction(reference);
 
-    if (result.data.status === 'success') {
+    if (result && result.data.status === 'success') {
       const metadata = result.data.metadata as Record<string, unknown> | undefined;
       
       // Check if this is a top-up
@@ -268,16 +268,20 @@ router.get('/verify/:reference', optionalAuth, async (req, res) => {
       }
     }
 
-    res.json({
-      success: true,
-      data: {
-        status: result.data.status,
-        amount: result.data.amount / 100,
-        reference: result.data.reference,
-        paidAt: result.data.paid_at,
-        channel: result.data.channel,
-      },
-    });
+    if (result) {
+      res.json({
+        success: true,
+        data: {
+          status: result.data.status,
+          amount: result.data.amount / 100,
+          reference: result.data.reference,
+          paidAt: result.data.paid_at,
+          channel: result.data.channel,
+        },
+      });
+    } else {
+      res.status(400).json({ success: false, error: 'Verification failed' });
+    }
   } catch (error) {
     console.error('❌ Paystack verification error:', error);
     res.status(500).json({
