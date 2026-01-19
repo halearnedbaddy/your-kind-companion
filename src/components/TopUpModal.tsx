@@ -146,7 +146,7 @@ export function TopUpModal({ isOpen, onClose, userEmail }: TopUpModalProps) {
               <LoaderIcon size={18} className="animate-spin" />
             ) : (
               <>
-                Pay KES {amount ? Number(amount).toLocaleString() : '0'}
+                Top Up KES {amount ? Number(amount).toLocaleString() : '0'}
                 <ArrowRightIcon size={18} />
               </>
             )}
