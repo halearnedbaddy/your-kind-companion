@@ -182,15 +182,26 @@ class CloudApiService {
       } else {
         const parts = hostname.split('.');
         const subDomain = parts[0];
+        
+        // Handle standard Replit pattern: project-port.id.replit.dev
         if (subDomain.includes('-')) {
           const subParts = subDomain.split('-');
-          subParts[subParts.length - 1] = '8000';
-          backendUrl = `${protocol}//${subParts.join('-')}.${parts.slice(1).join('.')}`;
+          // Replace the last part (the port) if it's a number
+          const lastPart = subParts[subParts.length - 1];
+          if (!isNaN(Number(lastPart))) {
+            subParts[subParts.length - 1] = '8000';
+            backendUrl = `${protocol}//${subParts.join('-')}.${parts.slice(1).join('.')}`;
+          } else {
+            // If the last part isn't a port, append -8000
+            backendUrl = `${protocol}//${subDomain}-8000.${parts.slice(1).join('.')}`;
+          }
         } else {
+          // Fallback if no dash in subdomain
           backendUrl = `${protocol}//${hostname}-8000.replit.dev`;
         }
       }
 
+      console.log('Backend URL for OTP:', backendUrl);
       const phoneClean = phone.replace(/\+/g, '').replace(/\s/g, '');
       const response = await fetch(`${backendUrl}/api/v1/auth/otp/request`, {
         method: 'POST',
@@ -219,8 +230,13 @@ class CloudApiService {
         const subDomain = parts[0];
         if (subDomain.includes('-')) {
           const subParts = subDomain.split('-');
-          subParts[subParts.length - 1] = '8000';
-          backendUrl = `${protocol}//${subParts.join('-')}.${parts.slice(1).join('.')}`;
+          const lastPart = subParts[subParts.length - 1];
+          if (!isNaN(Number(lastPart))) {
+            subParts[subParts.length - 1] = '8000';
+            backendUrl = `${protocol}//${subParts.join('-')}.${parts.slice(1).join('.')}`;
+          } else {
+            backendUrl = `${protocol}//${subDomain}-8000.${parts.slice(1).join('.')}`;
+          }
         } else {
           backendUrl = `${protocol}//${hostname}-8000.replit.dev`;
         }
