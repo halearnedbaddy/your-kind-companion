@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      otp_codes: {
+        Row: {
+          attempts: number
+          code: string
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           ai_confidence_score: number | null

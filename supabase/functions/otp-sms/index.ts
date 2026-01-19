@@ -6,9 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// In-memory OTP store (for simplicity - in production use Redis/DB)
-const otpStore = new Map<string, { code: string; expiresAt: number; attempts: number }>();
-
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -69,9 +66,10 @@ async function sendSMS(phone: string, message: string): Promise<{ success: boole
 
     const errorDesc = data[0]?.status_desc || data.status_desc || "SMS send failed";
     return { success: false, error: errorDesc };
-  } catch (error: any) {
-    console.error("❌ Error sending SMS:", error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("❌ Error sending SMS:", errMsg);
+    return { success: false, error: errMsg };
   }
 }
 
@@ -83,22 +81,28 @@ serve(async (req) => {
 
   try {
     const { action, phone, code } = await req.json();
-    
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const formattedPhone = formatPhoneNumber(phone);
+
+    // ======= SEND OTP =======
     if (action === "send") {
       // Validate phone is registered
-      const formattedPhone = formatPhoneNumber(phone);
-      
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("id, phone")
-        .or(`phone.eq.${phone},phone.eq.${formattedPhone},phone.eq.0${formattedPhone.slice(3)}`)
-        .single();
+        .or(`phone.eq.${phone},phone.eq.${formattedPhone},phone.eq.0${formattedPhone.slice(3)},phone.eq.+${formattedPhone}`)
+        .limit(1)
+        .maybeSingle();
 
-      if (profileError || !profile) {
+      if (profileError) {
+        console.error("Profile lookup error:", profileError);
+      }
+
+      if (!profile) {
         console.log("❌ Phone not registered:", phone);
         return new Response(
           JSON.stringify({ success: false, error: "Phone number not registered. Please sign up first." }),
@@ -106,9 +110,18 @@ serve(async (req) => {
         );
       }
 
-      // Check rate limiting (1 OTP per minute)
-      const existingOtp = otpStore.get(formattedPhone);
-      if (existingOtp && existingOtp.expiresAt > Date.now() && (existingOtp.expiresAt - Date.now()) > 9 * 60 * 1000) {
+      // Rate limiting: 1 OTP per minute
+      const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+      const { data: recentOtp } = await supabase
+        .from("otp_codes")
+        .select("id, created_at")
+        .eq("phone", formattedPhone)
+        .gt("created_at", oneMinuteAgo)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (recentOtp) {
         return new Response(
           JSON.stringify({ success: false, error: "Please wait before requesting another OTP" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -117,11 +130,22 @@ serve(async (req) => {
 
       // Generate and store OTP
       const otp = generateOTP();
-      otpStore.set(formattedPhone, {
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+
+      const { error: insertErr } = await supabase.from("otp_codes").insert({
+        phone: formattedPhone,
         code: otp,
-        expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
         attempts: 0,
+        expires_at: expiresAt,
       });
+
+      if (insertErr) {
+        console.error("Error inserting OTP:", insertErr);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to generate OTP" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       // Send SMS
       const message = `Your SWIFTLINE verification code is: ${otp}. Valid for 10 minutes. Do not share this code.`;
@@ -141,9 +165,21 @@ serve(async (req) => {
       );
     }
 
+    // ======= VERIFY OTP =======
     if (action === "verify") {
-      const formattedPhone = formatPhoneNumber(phone);
-      const storedOtp = otpStore.get(formattedPhone);
+      // Fetch the most recent unconsumed OTP for this phone
+      const { data: storedOtp, error: fetchErr } = await supabase
+        .from("otp_codes")
+        .select("*")
+        .eq("phone", formattedPhone)
+        .is("consumed_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fetchErr) {
+        console.error("Error fetching OTP:", fetchErr);
+      }
 
       if (!storedOtp) {
         return new Response(
@@ -152,39 +188,44 @@ serve(async (req) => {
         );
       }
 
-      if (storedOtp.expiresAt < Date.now()) {
-        otpStore.delete(formattedPhone);
+      // Check expiry
+      if (new Date(storedOtp.expires_at) < new Date()) {
+        // Mark as consumed (expired)
+        await supabase.from("otp_codes").update({ consumed_at: new Date().toISOString() }).eq("id", storedOtp.id);
         return new Response(
           JSON.stringify({ success: false, error: "OTP expired. Please request a new one." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
+      // Check attempts
       if (storedOtp.attempts >= 3) {
-        otpStore.delete(formattedPhone);
+        await supabase.from("otp_codes").update({ consumed_at: new Date().toISOString() }).eq("id", storedOtp.id);
         return new Response(
           JSON.stringify({ success: false, error: "Too many attempts. Please request a new OTP." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
+      // Validate code
       if (storedOtp.code !== code) {
-        storedOtp.attempts++;
+        await supabase.from("otp_codes").update({ attempts: storedOtp.attempts + 1 }).eq("id", storedOtp.id);
         return new Response(
           JSON.stringify({ success: false, error: "Invalid OTP code" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // OTP verified - find user and create session
-      otpStore.delete(formattedPhone);
+      // OTP verified – mark consumed
+      await supabase.from("otp_codes").update({ consumed_at: new Date().toISOString() }).eq("id", storedOtp.id);
 
-      // Get the user from profiles
+      // Get user profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("user_id, email, name, role")
-        .or(`phone.eq.${phone},phone.eq.${formattedPhone},phone.eq.0${formattedPhone.slice(3)}`)
-        .single();
+        .or(`phone.eq.${phone},phone.eq.${formattedPhone},phone.eq.0${formattedPhone.slice(3)},phone.eq.+${formattedPhone}`)
+        .limit(1)
+        .maybeSingle();
 
       if (!profile) {
         return new Response(
@@ -194,17 +235,17 @@ serve(async (req) => {
       }
 
       console.log(`✅ OTP verified for user: ${profile.user_id}`);
-      
+
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           message: "OTP verified successfully",
           user: {
             id: profile.user_id,
             email: profile.email,
             name: profile.name,
-            role: profile.role
-          }
+            role: profile.role,
+          },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -214,11 +255,11 @@ serve(async (req) => {
       JSON.stringify({ success: false, error: "Invalid action" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
-  } catch (error: any) {
-    console.error("❌ Error in OTP function:", error);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("❌ Error in OTP function:", errMsg);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: errMsg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
