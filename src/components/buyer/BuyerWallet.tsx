@@ -1,7 +1,8 @@
-import { DollarSignIcon, TrendingUpIcon, ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, LoaderIcon, RefreshCwIcon, PlusIcon } from '@/components/icons';
+import { DollarSignIcon, TrendingUpIcon, ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, LoaderIcon, RefreshCwIcon, PlusIcon, CheckCircleIcon, ShieldIcon } from '@/components/icons';
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/services/api';
 import { TopUpModal } from '@/components/TopUpModal';
+import confetti from 'canvas-confetti';
 
 interface BuyerWalletProps {
   wallet: any;
@@ -28,6 +29,37 @@ export function BuyerWallet({ wallet, loading, error, onRefresh, userEmail }: Bu
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Trigger confetti animation
+  const triggerConfetti = () => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#10b981', '#34d399', '#6ee7b7'],
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#10b981', '#34d399', '#6ee7b7'],
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+
+    frame();
+  };
 
   // Check for topup success in URL
   useEffect(() => {
@@ -36,9 +68,18 @@ export function BuyerWallet({ wallet, loading, error, onRefresh, userEmail }: Bu
     const reference = urlParams.get('reference');
     
     if (topupSuccess === 'success' && reference) {
+      setIsVerifying(true);
       // Verify the topup and refresh wallet
-      api.verifyPaystackPayment('topup', reference).then(() => {
+      api.verifyPaystackPayment('topup', reference).then((result) => {
+        setIsVerifying(false);
+        if (result?.success) {
+          setShowSuccess(true);
+          triggerConfetti();
+          setTimeout(() => setShowSuccess(false), 4000);
+        }
         onRefresh?.();
+      }).catch(() => {
+        setIsVerifying(false);
       });
       // Clear URL params
       window.history.replaceState({}, '', window.location.pathname);
@@ -141,7 +182,36 @@ export function BuyerWallet({ wallet, loading, error, onRefresh, userEmail }: Bu
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Verifying Payment Overlay */}
+      {isVerifying && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-8 text-center shadow-2xl animate-in zoom-in-95 duration-200 max-w-sm mx-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <LoaderIcon size={32} className="animate-spin text-primary" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground mb-2">Verifying Payment</h3>
+            <p className="text-muted-foreground text-sm">Please wait while we confirm your top-up...</p>
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <ShieldIcon size={14} className="text-primary" />
+              <span>Secure transaction processing</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Animation Overlay */}
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-8 text-center shadow-2xl animate-in zoom-in-95 duration-200 max-w-sm mx-4">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-in zoom-in duration-300">
+              <CheckCircleIcon size={40} className="text-green-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-foreground mb-2">Top-Up Successful!</h3>
+            <p className="text-muted-foreground">Your wallet balance has been updated.</p>
+          </div>
+        </div>
+      )}
       {/* Top Up Button */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">My Wallet</h2>
