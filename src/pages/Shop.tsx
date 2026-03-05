@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useProducts, useCategories, type Product } from "@/hooks/useProducts";
 import { useNavigate } from "react-router-dom";
+import { ShoppingCart, ArrowLeft, Search, Minus, Plus, Trash2, Lock, Home } from "lucide-react";
 
 type CartItem = Product & { qty: number };
 
@@ -25,7 +26,6 @@ export default function Shop() {
   const { data: categories = [] } = useCategories();
 
   const allCategories = ["All", ...categories.map(c => c.name)];
-
   const filtered = products.filter(p =>
     (activeCategory === "All" || p.category_name === activeCategory) &&
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -54,201 +54,158 @@ export default function Shop() {
     setTimeout(() => { setStkSent(false); setCart([]); setScreen("success"); }, 6000);
   };
 
-  const S: Record<string, React.CSSProperties> = {
-    app: { fontFamily: "'Sora', sans-serif", background: "#F7F4EF", minHeight: "100vh", maxWidth: 430, margin: "0 auto", position: "relative", overflow: "hidden" },
-    header: { background: "#0A0A0A", padding: "20px 20px 16px", position: "sticky", top: 0, zIndex: 100 },
-    logo: { display: "flex", alignItems: "center", gap: 8, marginBottom: 16 },
-    logoMark: { width: 36, height: 36, background: "#FF4D00", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: "#fff" },
-    logoText: { color: "#fff", fontSize: 18, fontWeight: 700, letterSpacing: "-0.5px" },
-    logoSub: { color: "#FF4D00", fontSize: 11, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase" as const },
-    cartBtn: { marginLeft: "auto", background: "#FF4D00", border: "none", borderRadius: 12, padding: "8px 14px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 },
-    searchBar: { background: "#1A1A1A", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 },
-    searchInput: { background: "transparent", border: "none", outline: "none", color: "#fff", fontSize: 14, flex: 1, fontFamily: "'Sora', sans-serif" },
-    heroStrip: { background: "linear-gradient(135deg, #FF4D00 0%, #FF8C00 100%)", padding: "20px 20px", position: "relative", overflow: "hidden" },
-    heroTitle: { color: "#fff", fontSize: 22, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.5px" },
-    heroSub: { color: "rgba(255,255,255,0.85)", fontSize: 13, marginTop: 4 },
-    heroPattern: { position: "absolute", right: -20, top: -20, fontSize: 80, opacity: 0.15 },
-    grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, padding: "0 16px 100px" },
-    card: { background: "#fff", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "transform 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" },
-    cardImg: { background: "#F7F4EF", height: 110, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, position: "relative" },
-    cardBody: { padding: "10px 12px 12px" },
-    cardName: { fontSize: 13, fontWeight: 700, color: "#0A0A0A", lineHeight: 1.3, marginBottom: 4 },
-    cardAgent: { fontSize: 11, color: "#999", marginBottom: 8 },
-    cardPrice: { fontSize: 16, fontWeight: 800, color: "#FF4D00" },
-    cardOld: { fontSize: 11, color: "#bbb", textDecoration: "line-through", marginLeft: 4 },
-    addBtn: { background: "#0A0A0A", color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", marginTop: 8, width: "100%", fontFamily: "'Sora', sans-serif" },
-    bottomNav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "#fff", borderTop: "1px solid #E8E4DD", display: "flex", padding: "10px 0 16px", zIndex: 200 },
-    checkoutBtn: { background: "#FF4D00", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 15, fontWeight: 800, width: "100%", cursor: "pointer", fontFamily: "'Sora', sans-serif", letterSpacing: "-0.3px" },
-    checkoutBar: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "#0A0A0A", padding: "16px 20px 28px", zIndex: 200 },
-    input: { background: "#fff", border: "2px solid #E8E4DD", borderRadius: 12, padding: "14px 16px", fontSize: 15, fontFamily: "'Sora', sans-serif", width: "100%", outline: "none", color: "#0A0A0A", boxSizing: "border-box" as const },
-    label: { fontSize: 12, fontWeight: 700, color: "#666", letterSpacing: 1, textTransform: "uppercase" as const, marginBottom: 6, display: "block" },
-    summaryBox: { background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" },
-    stkBox: { background: "#0A0A0A", borderRadius: 14, padding: 16, textAlign: "center" as const, color: "#fff", marginBottom: 16 },
-    cartItem: { background: "#fff", borderRadius: 14, padding: 14, display: "flex", alignItems: "center", gap: 12, marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" },
-    cartItemEmoji: { fontSize: 32, background: "#F7F4EF", width: 52, height: 52, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-    qtyBtn: { background: "#F7F4EF", border: "none", borderRadius: 6, width: 26, height: 26, cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: "'Sora', sans-serif" },
-  };
-
-  const catBtn = (active: boolean): React.CSSProperties => ({
-    background: active ? "#0A0A0A" : "#fff", color: active ? "#fff" : "#0A0A0A",
-    border: `2px solid ${active ? "#0A0A0A" : "#E8E4DD"}`, borderRadius: 100,
-    padding: "7px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
-    fontFamily: "'Sora', sans-serif", transition: "all 0.2s",
-  });
-
-  const badgeStyle = (type: string): React.CSSProperties => ({
-    position: "absolute", top: 8, left: 8,
-    background: badgeColors[type]?.bg, color: badgeColors[type]?.text,
-    fontSize: 10, fontWeight: 800, padding: "3px 7px", borderRadius: 6, letterSpacing: 0.5,
-  });
-
-  const navItem = (active: boolean): React.CSSProperties => ({
-    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-    cursor: "pointer", color: active ? "#FF4D00" : "#999", fontSize: 10, fontWeight: active ? 700 : 500,
-  });
+  const AppShell = ({ children, title, onBack, rightContent }: { children: React.ReactNode; title: string; onBack?: () => void; rightContent?: React.ReactNode }) => (
+    <div className="font-['Sora',sans-serif] bg-[#F7F4EF] min-h-screen max-w-[430px] mx-auto relative overflow-hidden">
+      <div className="bg-[#0A0A0A] px-5 py-4 sticky top-0 z-50 flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} className="bg-[#1A1A1A] border-none rounded-xl w-9 h-9 flex items-center justify-center text-white cursor-pointer">
+            <ArrowLeft size={16} />
+          </button>
+        )}
+        <span className="text-white font-bold text-base flex-1">{title}</span>
+        {rightContent}
+      </div>
+      {children}
+    </div>
+  );
 
   // Product Detail
   if (screen === "product" && selectedProduct) {
     const p = selectedProduct;
     return (
-      <div style={S.app}>
-        <div style={{ background: "#0A0A0A", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => setScreen("home")} style={{ background: "#1A1A1A", border: "none", borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 16 }}>←</button>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 16 }}>Product Detail</span>
-        </div>
-        <div style={{ background: "#F7F4EF", height: 220, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 100 }}>{p.emoji || "📦"}</div>
-        <div style={{ padding: "20px 20px 100px" }}>
-          {p.badge && <span style={{ ...badgeStyle(p.badge), position: "relative", top: 0, left: 0, display: "inline-block", marginBottom: 10 }}>{p.badge}</span>}
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#0A0A0A", marginBottom: 4 }}>{p.name}</div>
-          <div style={{ fontSize: 13, color: "#999", marginBottom: 16 }}>⭐ {p.rating || 0} · {p.total_sold} sold</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 20 }}>
-            <span style={{ fontSize: 28, fontWeight: 800, color: "#FF4D00" }}>KSh {p.price.toLocaleString()}</span>
-            {p.original_price && <span style={{ fontSize: 15, color: "#bbb", textDecoration: "line-through" }}>KSh {p.original_price.toLocaleString()}</span>}
+      <AppShell title="Product Detail" onBack={() => setScreen("home")}>
+        <div className="bg-[#F7F4EF] h-[220px] flex items-center justify-center text-[100px]">{p.emoji || "📦"}</div>
+        <div className="p-5 pb-[100px]">
+          {p.badge && <span className="inline-block mb-2.5 text-[10px] font-extrabold px-2 py-0.5 rounded-md" style={{ background: badgeColors[p.badge]?.bg, color: badgeColors[p.badge]?.text }}>{p.badge}</span>}
+          <div className="text-[22px] font-extrabold text-[#0A0A0A] mb-1">{p.name}</div>
+          <div className="text-sm text-[#999] mb-4">⭐ {p.rating || 0} · {p.total_sold} sold</div>
+          <div className="flex items-baseline gap-2 mb-5">
+            <span className="text-[28px] font-extrabold text-primary">KSh {p.price.toLocaleString()}</span>
+            {p.original_price && <span className="text-[15px] text-[#bbb] line-through">KSh {p.original_price.toLocaleString()}</span>}
           </div>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>About this product</div>
-            <div style={{ fontSize: 13, color: "#666", lineHeight: 1.6 }}>{p.description || `Premium quality ${p.name} sourced and sold exclusively through PayLoom Instants. 100% authentic with 30-day return policy and PayLoom buyer protection.`}</div>
+          <div className="bg-white rounded-2xl p-4 mb-4">
+            <div className="text-sm font-bold mb-2">About this product</div>
+            <div className="text-sm text-[#666] leading-relaxed">{p.description || `Premium quality ${p.name}. 100% authentic with buyer protection.`}</div>
           </div>
         </div>
-        <div style={S.checkoutBar}>
-          <button onClick={() => { addToCart(p); setScreen("cart"); }} style={S.checkoutBtn}>Add to Cart — KSh {p.price.toLocaleString()}</button>
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-[#0A0A0A] p-5 pb-7 z-50">
+          <button onClick={() => { addToCart(p); setScreen("cart"); }} className="bg-primary text-white border-none rounded-2xl py-4 w-full text-[15px] font-extrabold cursor-pointer">
+            Add to Cart — KSh {p.price.toLocaleString()}
+          </button>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
   // Cart
   if (screen === "cart") {
     return (
-      <div style={S.app}>
-        <div style={{ background: "#0A0A0A", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => setScreen("home")} style={{ background: "#1A1A1A", border: "none", borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 16 }}>←</button>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 16 }}>My Cart</span>
-          <span style={{ marginLeft: "auto", color: "#FF4D00", fontWeight: 700 }}>{cartCount} items</span>
-        </div>
-        <div style={{ padding: "20px 20px 100px", minHeight: "100vh" }}>
+      <AppShell title="My Cart" onBack={() => setScreen("home")} rightContent={<span className="text-primary font-bold">{cartCount} items</span>}>
+        <div className="p-5 pb-[100px] min-h-screen">
           {cart.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <div style={{ fontSize: 64, marginBottom: 16 }}>🛒</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#0A0A0A" }}>Your cart is empty</div>
-              <div style={{ fontSize: 14, color: "#999", marginTop: 8 }}>Add items to get started</div>
-              <button onClick={() => setScreen("home")} style={{ ...S.checkoutBtn, marginTop: 24, width: "auto", padding: "12px 24px" }}>Browse Products</button>
+            <div className="text-center py-16">
+              <div className="text-7xl mb-4">🛒</div>
+              <div className="text-lg font-bold text-[#0A0A0A]">Your cart is empty</div>
+              <div className="text-sm text-[#999] mt-2">Add items to get started</div>
+              <button onClick={() => setScreen("home")} className="bg-primary text-white border-none rounded-2xl py-3 px-6 text-sm font-extrabold cursor-pointer mt-6">Browse Products</button>
             </div>
           ) : cart.map(item => (
-            <div key={item.id} style={S.cartItem}>
-              <div style={S.cartItemEmoji}>{item.emoji || "📦"}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0A0A0A" }}>{item.name}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-                  <button style={S.qtyBtn} onClick={() => updateQty(item.id, -1)}>−</button>
-                  <span style={{ fontSize: 14, fontWeight: 700 }}>{item.qty}</span>
-                  <button style={S.qtyBtn} onClick={() => updateQty(item.id, 1)}>+</button>
+            <div key={item.id} className="bg-white rounded-2xl p-3.5 flex items-center gap-3 mb-2.5 shadow-sm">
+              <div className="text-3xl bg-[#F7F4EF] w-[52px] h-[52px] rounded-xl flex items-center justify-center shrink-0">{item.emoji || "📦"}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-[#0A0A0A] truncate">{item.name}</div>
+                <div className="flex items-center gap-2.5 mt-1.5">
+                  <button className="bg-[#F7F4EF] border-none rounded-md w-7 h-7 cursor-pointer flex items-center justify-center" onClick={() => updateQty(item.id, -1)}><Minus size={14} /></button>
+                  <span className="text-sm font-bold">{item.qty}</span>
+                  <button className="bg-[#F7F4EF] border-none rounded-md w-7 h-7 cursor-pointer flex items-center justify-center" onClick={() => updateQty(item.id, 1)}><Plus size={14} /></button>
                 </div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#FF4D00" }}>KSh {(item.price * item.qty).toLocaleString()}</div>
-                <button onClick={() => removeFromCart(item.id)} style={{ background: "none", border: "none", color: "#FF4D00", fontSize: 11, cursor: "pointer", marginTop: 6, fontFamily: "'Sora', sans-serif" }}>Remove</button>
+              <div className="text-right">
+                <div className="text-[15px] font-extrabold text-primary">KSh {(item.price * item.qty).toLocaleString()}</div>
+                <button onClick={() => removeFromCart(item.id)} className="bg-transparent border-none text-red-500 text-xs cursor-pointer mt-1.5 flex items-center gap-1 ml-auto"><Trash2 size={12} /> Remove</button>
               </div>
             </div>
           ))}
         </div>
         {cart.length > 0 && (
-          <div style={S.checkoutBar}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-              <span style={{ color: "#999", fontSize: 13 }}>Total ({cartCount} items)</span>
-              <span style={{ color: "#fff", fontSize: 18, fontWeight: 800 }}>KSh {cartTotal.toLocaleString()}</span>
+          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-[#0A0A0A] p-5 pb-7 z-50">
+            <div className="flex justify-between mb-3">
+              <span className="text-[#999] text-sm">Total ({cartCount} items)</span>
+              <span className="text-white text-lg font-extrabold">KSh {cartTotal.toLocaleString()}</span>
             </div>
-            <button onClick={() => setScreen("checkout")} style={S.checkoutBtn}>Proceed to Checkout →</button>
+            <button onClick={() => setScreen("checkout")} className="bg-primary text-white border-none rounded-2xl py-4 w-full text-[15px] font-extrabold cursor-pointer">
+              Proceed to Checkout →
+            </button>
           </div>
         )}
-      </div>
+      </AppShell>
     );
   }
 
   // Checkout
   if (screen === "checkout") {
     return (
-      <div style={S.app}>
-        <div style={{ background: "#0A0A0A", padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => setScreen("cart")} style={{ background: "#1A1A1A", border: "none", borderRadius: 10, width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 16 }}>←</button>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 16 }}>Pay via M-Pesa</span>
-        </div>
-        <div style={{ padding: "20px 20px 120px" }}>
-          <div style={S.summaryBox}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: "#0A0A0A" }}>Order Summary</div>
+      <AppShell title="Pay via M-Pesa" onBack={() => setScreen("cart")}>
+        <div className="p-5 pb-[120px]">
+          <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+            <div className="text-sm font-bold mb-3 text-[#0A0A0A]">Order Summary</div>
             {cart.map(item => (
-              <div key={item.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 13, color: "#666" }}>{item.emoji} {item.name} ×{item.qty}</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>KSh {(item.price * item.qty).toLocaleString()}</span>
+              <div key={item.id} className="flex justify-between mb-2">
+                <span className="text-sm text-[#666]">{item.emoji} {item.name} ×{item.qty}</span>
+                <span className="text-sm font-bold">KSh {(item.price * item.qty).toLocaleString()}</span>
               </div>
             ))}
-            <div style={{ borderTop: "1px solid #F0EDE8", paddingTop: 10, marginTop: 4, display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 14, fontWeight: 700 }}>Total</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: "#FF4D00" }}>KSh {cartTotal.toLocaleString()}</span>
+            <div className="border-t border-[#F0EDE8] pt-2.5 mt-1 flex justify-between">
+              <span className="text-sm font-bold">Total</span>
+              <span className="text-base font-extrabold text-primary">KSh {cartTotal.toLocaleString()}</span>
             </div>
           </div>
-          <div style={{ marginBottom: 20 }}>
-            <label style={S.label}>M-Pesa Phone Number</label>
-            <input style={S.input} placeholder="e.g. 0712 345 678" value={phone} onChange={e => setPhone(e.target.value)} type="tel" />
+          <div className="mb-5">
+            <label className="text-xs font-bold text-[#666] tracking-widest uppercase mb-1.5 block">M-Pesa Phone Number</label>
+            <input className="bg-white border-2 border-[#E8E4DD] rounded-xl py-3.5 px-4 text-[15px] w-full outline-none text-[#0A0A0A] font-['Sora',sans-serif] focus:border-primary transition-colors"
+              placeholder="e.g. 0712 345 678" value={phone} onChange={e => setPhone(e.target.value)} type="tel" />
           </div>
           {stkSent && (
-            <div style={S.stkBox}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>📲</div>
-              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>STK Push Sent!</div>
-              <div style={{ fontSize: 12, color: "#aaa" }}>Check your phone and enter your M-Pesa PIN to complete payment</div>
-              <div style={{ marginTop: 12, fontSize: 11, color: "#FF4D00" }}>⏳ Waiting for confirmation...</div>
+            <div className="bg-[#0A0A0A] rounded-2xl p-4 text-center text-white mb-4">
+              <div className="text-[28px] mb-2">📲</div>
+              <div className="font-extrabold text-[15px] mb-1">STK Push Sent!</div>
+              <div className="text-xs text-[#aaa]">Check your phone and enter your M-Pesa PIN to complete payment</div>
+              <div className="mt-3 text-xs text-primary">⏳ Waiting for confirmation...</div>
             </div>
           )}
-          <div style={{ background: "#E8F5EF", borderRadius: 12, padding: 14, display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 24 }}>🔒</span>
+          <div className="bg-[#E8F5EF] rounded-xl p-3.5 flex items-center gap-2.5">
+            <Lock size={20} className="text-[#00A651]" />
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#00A651" }}>Secured by PayLoom Instants</div>
-              <div style={{ fontSize: 11, color: "#666" }}>Your payment goes directly to our verified merchant account</div>
+              <div className="text-xs font-bold text-[#00A651]">Secured by PayLoom Instants</div>
+              <div className="text-[11px] text-[#666]">Your payment goes directly to our verified merchant account</div>
             </div>
           </div>
         </div>
-        <div style={S.checkoutBar}>
-          <button onClick={handlePay} disabled={paying || stkSent} style={{ ...S.checkoutBtn, opacity: (paying || stkSent) ? 0.7 : 1 }}>
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-[#0A0A0A] p-5 pb-7 z-50">
+          <button onClick={handlePay} disabled={paying || stkSent}
+            className="bg-primary text-white border-none rounded-2xl py-4 w-full text-[15px] font-extrabold cursor-pointer disabled:opacity-60">
             {paying ? "⏳ Sending STK Push..." : stkSent ? "📲 Awaiting PIN..." : `Pay KSh ${cartTotal.toLocaleString()} via M-Pesa`}
           </button>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
   // Success
   if (screen === "success") {
     return (
-      <div style={{ ...S.app, background: "#0A0A0A" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: 32, textAlign: "center" }}>
-          <div style={{ fontSize: 80, marginBottom: 20 }}>✅</div>
-          <div style={{ color: "#fff", fontSize: 26, fontWeight: 800, marginBottom: 8 }}>Payment Confirmed!</div>
-          <div style={{ color: "#aaa", fontSize: 14, marginBottom: 32, lineHeight: 1.6 }}>Your M-Pesa payment was received by PayLoom Instants. Your order is being processed.</div>
-          <div style={{ background: "#1A1A1A", borderRadius: 16, padding: 20, width: "100%", marginBottom: 24, textAlign: "left" }}>
-            <div style={{ color: "#666", fontSize: 12, marginBottom: 8 }}>TRANSACTION REFERENCE</div>
-            <div style={{ color: "#FF4D00", fontSize: 16, fontWeight: 800 }}>PLI{Math.random().toString(36).substring(2, 10).toUpperCase()}</div>
+      <div className="font-['Sora',sans-serif] bg-[#0A0A0A] min-h-screen max-w-[430px] mx-auto">
+        <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center">
+          <div className="text-[80px] mb-5">✅</div>
+          <div className="text-white text-[26px] font-extrabold mb-2">Payment Confirmed!</div>
+          <div className="text-[#aaa] text-sm mb-8 leading-relaxed">Your M-Pesa payment was received. Your order is being processed.</div>
+          <div className="bg-[#1A1A1A] rounded-2xl p-5 w-full mb-6 text-left">
+            <div className="text-[#666] text-xs mb-2">TRANSACTION REFERENCE</div>
+            <div className="text-primary text-base font-extrabold">PLI{Math.random().toString(36).substring(2, 10).toUpperCase()}</div>
           </div>
-          <button onClick={() => setScreen("home")} style={{ ...S.checkoutBtn, width: "100%" }}>Continue Shopping →</button>
+          <button onClick={() => setScreen("home")} className="bg-primary text-white border-none rounded-2xl py-4 w-full text-[15px] font-extrabold cursor-pointer">
+            Continue Shopping →
+          </button>
         </div>
       </div>
     );
@@ -256,78 +213,95 @@ export default function Shop() {
 
   // Home
   return (
-    <div style={S.app}>
-      <div style={S.header}>
-        <div style={S.logo}>
-          <div style={S.logoMark}>P</div>
+    <div className="font-['Sora',sans-serif] bg-[#F7F4EF] min-h-screen max-w-[430px] mx-auto relative overflow-hidden">
+      <div className="bg-[#0A0A0A] px-5 pt-5 pb-4 sticky top-0 z-50">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center text-lg font-black text-white">P</div>
           <div>
-            <div style={S.logoText}>PayLoom</div>
-            <div style={S.logoSub}>Instants Shop</div>
+            <div className="text-white text-lg font-bold tracking-tight">PayLoom</div>
+            <div className="text-primary text-[11px] font-semibold tracking-widest uppercase">Instants Shop</div>
           </div>
-          <button style={S.cartBtn} onClick={() => setScreen("cart")}>
-            🛒 {cartCount > 0 && <span style={{ background: "#fff", color: "#FF4D00", borderRadius: "50%", width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900 }}>{cartCount}</span>}
-            {cartCount === 0 ? "Cart" : ""}
+          <button className="ml-auto bg-primary border-none rounded-xl px-3.5 py-2 text-white text-sm font-bold cursor-pointer flex items-center gap-1.5"
+            onClick={() => setScreen("cart")}>
+            <ShoppingCart size={16} />
+            {cartCount > 0 && <span className="bg-white text-primary rounded-full w-[18px] h-[18px] inline-flex items-center justify-center text-[10px] font-black">{cartCount}</span>}
+            {cartCount === 0 && "Cart"}
           </button>
         </div>
-        <div style={S.searchBar}>
-          <span style={{ color: "#666" }}>🔍</span>
-          <input style={S.searchInput} placeholder="Search products..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        <div className="bg-[#1A1A1A] rounded-xl px-3.5 py-2.5 flex items-center gap-2">
+          <Search size={16} className="text-[#666]" />
+          <input className="bg-transparent border-none outline-none text-white text-sm flex-1 font-['Sora',sans-serif] placeholder:text-[#666]"
+            placeholder="Search products..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
         </div>
       </div>
-      <div style={S.heroStrip}>
-        <div style={S.heroPattern}>🛍️</div>
-        <div style={S.heroTitle}>Shop. Pay. Done.<br />Instantly.</div>
-        <div style={S.heroSub}>Pay with M-Pesa · Delivered to your door</div>
+
+      <div className="bg-gradient-to-br from-primary to-[#FF8C00] px-5 py-5 relative overflow-hidden">
+        <div className="absolute -right-5 -top-5 text-[80px] opacity-15">🛍️</div>
+        <div className="text-white text-[22px] font-extrabold leading-tight tracking-tight">Shop. Pay. Done.<br />Instantly.</div>
+        <div className="text-white/85 text-sm mt-1">Pay with M-Pesa · Delivered to your door</div>
       </div>
-      <div style={{ display: "flex", gap: 8, padding: "16px 20px", overflowX: "auto", scrollbarWidth: "none" as const }}>
+
+      <div className="flex gap-2 px-5 py-4 overflow-x-auto scrollbar-hide">
         {allCategories.map(c => (
-          <button key={c} style={catBtn(activeCategory === c)} onClick={() => setActiveCategory(c)}>{c}</button>
+          <button key={c} onClick={() => setActiveCategory(c)}
+            className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold border-2 cursor-pointer transition-all font-['Sora',sans-serif] ${activeCategory === c ? 'bg-[#0A0A0A] text-white border-[#0A0A0A]' : 'bg-white text-[#0A0A0A] border-[#E8E4DD] hover:border-[#ccc]'}`}>
+            {c}
+          </button>
         ))}
       </div>
-      <div style={{ padding: "0 20px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: "#0A0A0A" }}>
+
+      <div className="px-5 pb-3 flex justify-between items-center">
+        <div className="text-[15px] font-extrabold text-[#0A0A0A]">
           {isLoading ? "Loading..." : `${filtered.length} Products`}
         </div>
-        <div style={{ fontSize: 12, color: "#999" }}>Tap to view details</div>
+        <div className="text-xs text-[#999]">Tap to view details</div>
       </div>
+
       {isLoading ? (
-        <div style={{ textAlign: "center", padding: 40, color: "#999" }}>Loading products from database...</div>
+        <div className="text-center py-10 text-[#999]">Loading products from database...</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 40 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>📭</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#0A0A0A" }}>No products yet</div>
-          <div style={{ fontSize: 13, color: "#999", marginTop: 4 }}>Products will appear here once added via Admin panel</div>
+        <div className="text-center py-10">
+          <div className="text-5xl mb-2">📭</div>
+          <div className="text-[15px] font-bold text-[#0A0A0A]">No products yet</div>
+          <div className="text-sm text-[#999] mt-1">Products will appear here once added via Admin panel</div>
         </div>
       ) : (
-        <div style={S.grid}>
+        <div className="grid grid-cols-2 gap-3 px-4 pb-[100px]">
           {filtered.map(p => (
-            <div key={p.id} style={S.card} onClick={() => { setSelectedProduct(p); setScreen("product"); }}>
-              <div style={S.cardImg}>
+            <div key={p.id} className="bg-white rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+              onClick={() => { setSelectedProduct(p); setScreen("product"); }}>
+              <div className="bg-[#F7F4EF] h-[110px] flex items-center justify-center text-[52px] relative">
                 {p.emoji || "📦"}
-                {p.badge && <span style={badgeStyle(p.badge)}>{p.badge}</span>}
+                {p.badge && <span className="absolute top-2 left-2 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md" style={{ background: badgeColors[p.badge]?.bg, color: badgeColors[p.badge]?.text }}>{p.badge}</span>}
               </div>
-              <div style={S.cardBody}>
-                <div style={S.cardName}>{p.name}</div>
-                <div style={S.cardAgent}>{p.category_name}</div>
-                <div style={{ display: "flex", alignItems: "baseline" }}>
-                  <span style={S.cardPrice}>KSh {p.price.toLocaleString()}</span>
-                  {p.original_price && <span style={S.cardOld}>{p.original_price.toLocaleString()}</span>}
+              <div className="p-3">
+                <div className="text-[13px] font-bold text-[#0A0A0A] leading-tight mb-1">{p.name}</div>
+                <div className="text-[11px] text-[#999] mb-2">{p.category_name}</div>
+                <div className="flex items-baseline">
+                  <span className="text-base font-extrabold text-primary">KSh {p.price.toLocaleString()}</span>
+                  {p.original_price && <span className="text-[11px] text-[#bbb] line-through ml-1">{p.original_price.toLocaleString()}</span>}
                 </div>
-                <button style={S.addBtn} onClick={e => { e.stopPropagation(); addToCart(p); }}>+ Add to Cart</button>
+                <button className="bg-[#0A0A0A] text-white border-none rounded-lg py-1.5 w-full text-[11px] font-bold cursor-pointer mt-2 font-['Sora',sans-serif] hover:bg-[#222] transition-colors"
+                  onClick={e => { e.stopPropagation(); addToCart(p); }}>+ Add to Cart</button>
               </div>
             </div>
           ))}
         </div>
       )}
-      <div style={S.bottomNav}>
-        {([["🏠", "Home", "home"], ["🛒", "Cart", "cart"]] as const).map(([icon, label, s]) => (
-          <div key={s} style={navItem(screen === s)} onClick={() => setScreen(s)}>
-            <span style={{ fontSize: 20 }}>{icon}</span>
+
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-[#E8E4DD] flex py-2.5 pb-4 z-50">
+        {([
+          { icon: <Home size={20} />, label: "Home", s: "home" as const },
+          { icon: <ShoppingCart size={20} />, label: "Cart", s: "cart" as const },
+        ]).map(({ icon, label, s }) => (
+          <div key={s} className={`flex-1 flex flex-col items-center gap-0.5 cursor-pointer text-[10px] font-medium ${screen === s ? 'text-primary font-bold' : 'text-[#999]'}`}
+            onClick={() => setScreen(s)}>
+            {icon}
             <span>{label}</span>
           </div>
         ))}
-        <div style={navItem(false)} onClick={() => navigate("/")}>
-          <span style={{ fontSize: 20 }}>🏢</span>
+        <div className="flex-1 flex flex-col items-center gap-0.5 cursor-pointer text-[10px] font-medium text-[#999]" onClick={() => navigate("/")}>
+          <span className="text-xl">🏢</span>
           <span>Hub</span>
         </div>
       </div>

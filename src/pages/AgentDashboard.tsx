@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { Home, Package, FileText, Banknote, User, Bell, ArrowRight, Link2, Copy, Check } from "lucide-react";
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   delivered: { bg: "#0D2B1E", color: "#00D97E", label: "Delivered" },
@@ -18,8 +19,8 @@ export default function AgentDashboard() {
   const [tab, setTab] = useState("home");
   const [shareModal, setShareModal] = useState(false);
   const [shareProduct, setShareProduct] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
-  // Fetch all agents for demo (no auth required)
   const { data: agents = [] } = useQuery({
     queryKey: ["all-agents"],
     queryFn: async () => {
@@ -29,7 +30,6 @@ export default function AgentDashboard() {
     },
   });
 
-  // Fetch products
   const { data: products = [] } = useQuery({
     queryKey: ["agent-products"],
     queryFn: async () => {
@@ -39,7 +39,6 @@ export default function AgentDashboard() {
     },
   });
 
-  // Fetch orders
   const { data: orders = [] } = useQuery({
     queryKey: ["agent-orders"],
     queryFn: async () => {
@@ -49,7 +48,6 @@ export default function AgentDashboard() {
     },
   });
 
-  // Fetch payouts
   const { data: payouts = [] } = useQuery({
     queryKey: ["agent-payouts"],
     queryFn: async () => {
@@ -59,107 +57,97 @@ export default function AgentDashboard() {
     },
   });
 
-  const agent = agents[0] as any; // Demo: show first agent
+  const agent = agents[0] as any;
   const agentName = agent?.profiles?.full_name || "Agent";
   const agentPhone = agent?.profiles?.phone || agent?.mpesa_phone || "";
   const agentAvatar = agentName.split(" ").map((n: string) => n[0]).join("").substring(0, 2);
-
   const pendingEarnings = agent?.pending_earnings || 0;
   const totalEarnings = agent?.total_earned || 0;
   const totalSales = agent?.total_sales || 0;
   const commissionRate = agent?.commission_rate || 8;
   const tier = agent?.tier || "Bronze";
 
-  const S: Record<string, React.CSSProperties> = {
-    root: { fontFamily: "'DM Sans', sans-serif", background: "#0C0C10", minHeight: "100vh", maxWidth: 430, margin: "0 auto", color: "#F0EEF8", position: "relative", paddingBottom: 72 },
-    topBar: { padding: "20px 20px 16px", background: "#0C0C10", position: "sticky", top: 0, zIndex: 99, borderBottom: "1px solid #1C1C24" },
-    balanceCard: { background: "linear-gradient(135deg, #1A0A00 0%, #2B1400 50%, #1A0A00 100%)", border: "1px solid #3D1F00", borderRadius: 20, padding: "20px 20px 16px", margin: "16px 16px 0", position: "relative", overflow: "hidden" },
-    balanceGlow: { position: "absolute", top: -40, right: -40, width: 120, height: 120, background: "radial-gradient(circle, rgba(255,77,0,0.3) 0%, transparent 70%)", borderRadius: "50%" },
-    requestBtn: { marginTop: 14, background: "#FF4D00", border: "none", borderRadius: 12, padding: "12px 0", width: "100%", color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
-    statGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "12px 16px 0" },
-    statCard: { background: "#16161E", border: "1px solid #1F1F2E", borderRadius: 14, padding: "14px 14px 12px" },
-    section: { padding: "20px 16px 0" },
-    sectionTitle: { fontSize: 14, fontWeight: 800, color: "#888", letterSpacing: 0.5, textTransform: "uppercase" as const, marginBottom: 12 },
-    orderRow: { background: "#16161E", border: "1px solid #1F1F2E", borderRadius: 14, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 },
-    productRow: { background: "#16161E", border: "1px solid #1F1F2E", borderRadius: 14, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 },
-    nav: { position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "#0C0C10", borderTop: "1px solid #1C1C24", display: "flex", padding: "10px 0 16px", zIndex: 200 },
-    modal: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "flex-end", zIndex: 999 },
-    modalBox: { background: "#16161E", borderRadius: "20px 20px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 430, margin: "0 auto", border: "1px solid #2A2A36" },
-    copyBtn: { background: "#FF4D00", border: "none", borderRadius: 12, padding: "13px 0", width: "100%", color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 14 },
+  const statusPill = (s: string) => ({
+    background: STATUS_STYLE[s]?.bg || "#1A1A1A", color: STATUS_STYLE[s]?.color || "#fff",
+    fontSize: 10, fontWeight: 700 as const, padding: "3px 8px", borderRadius: 6,
+  });
+
+  const handleCopyLink = (productId: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/shop?ref=${agent?.id || 'agent'}&product=${productId}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const statusPill = (s: string): React.CSSProperties => ({
-    background: STATUS_STYLE[s]?.bg || "#1A1A1A", color: STATUS_STYLE[s]?.color || "#fff",
-    fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 6,
-  });
-
-  const navItem = (active: boolean): React.CSSProperties => ({
-    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-    cursor: "pointer", color: active ? "#FF4D00" : "#3A3A4A", fontSize: 10, fontWeight: active ? 800 : 500,
-  });
-
   const NAV_ITEMS = [
-    { id: "home", icon: "⚡", label: "Home" },
-    { id: "products", icon: "📦", label: "Products" },
-    { id: "orders", icon: "🧾", label: "Orders" },
-    { id: "payouts", icon: "💸", label: "Payouts" },
-    { id: "profile", icon: "👤", label: "Profile" },
+    { id: "home", icon: <Home size={20} />, label: "Home" },
+    { id: "products", icon: <Package size={20} />, label: "Products" },
+    { id: "orders", icon: <FileText size={20} />, label: "Orders" },
+    { id: "payouts", icon: <Banknote size={20} />, label: "Payouts" },
+    { id: "profile", icon: <User size={20} />, label: "Profile" },
   ];
 
   const EmptyState = ({ icon, title, sub }: { icon: string; title: string; sub: string }) => (
-    <div style={{ textAlign: "center", padding: "40px 20px" }}>
-      <div style={{ fontSize: 48, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 16, fontWeight: 700 }}>{title}</div>
-      <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>{sub}</div>
+    <div className="text-center py-10 px-5">
+      <div className="text-5xl mb-2">{icon}</div>
+      <div className="text-base font-bold">{title}</div>
+      <div className="text-sm text-[#555] mt-1">{sub}</div>
     </div>
   );
 
   const HomeTab = () => (
     <div>
-      <div style={{ padding: "16px 16px 0", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg,#FF4D00,#FF8C00)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 15 }}>{agentAvatar || "AG"}</div>
+      <div className="px-4 pt-4 flex items-center gap-2.5">
+        <div className="w-[42px] h-[42px] rounded-xl bg-gradient-to-br from-primary to-[#FF8C00] flex items-center justify-center font-black text-[15px] text-white">{agentAvatar || "AG"}</div>
         <div>
-          <div style={{ fontSize: 13, color: "#666" }}>Welcome 👋</div>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>{agentName}</div>
+          <div className="text-[13px] text-[#666]">Welcome 👋</div>
+          <div className="text-base font-extrabold">{agentName}</div>
         </div>
-        {agent && <div style={{ marginLeft: "auto", background: "#1A1000", border: `1px solid ${TIER_COLOR[tier]}33`, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 800, color: TIER_COLOR[tier] }}>{tier} Agent</div>}
+        {agent && <div className="ml-auto text-[11px] font-extrabold px-2.5 py-1 rounded-lg border" style={{ background: "#1A1000", borderColor: `${TIER_COLOR[tier]}33`, color: TIER_COLOR[tier] }}>⭐ {tier}</div>}
       </div>
-      <div style={S.balanceCard}>
-        <div style={S.balanceGlow} />
-        <div style={{ fontSize: 11, color: "#FF8C5A", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>Pending Earnings</div>
-        <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-1px", color: "#fff", margin: "6px 0 2px" }}>KSh {Number(pendingEarnings).toLocaleString()}</div>
-        <div style={{ fontSize: 12, color: "#AA7755" }}>Commission rate: {commissionRate}% per sale</div>
-        <button style={S.requestBtn}>Request Payout via M-Pesa →</button>
+
+      {/* Balance Card */}
+      <div className="mx-4 mt-4 bg-gradient-to-br from-[#1A0A00] via-[#2B1400] to-[#1A0A00] border border-[#3D1F00] rounded-2xl p-5 relative overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-[120px] h-[120px] bg-[radial-gradient(circle,rgba(255,77,0,0.3)_0%,transparent_70%)] rounded-full" />
+        <div className="text-[11px] text-[#FF8C5A] font-bold tracking-widest uppercase">Pending Earnings</div>
+        <div className="text-[34px] font-extrabold tracking-tighter text-white my-1.5">KSh {Number(pendingEarnings).toLocaleString()}</div>
+        <div className="text-xs text-[#AA7755]">Commission rate: {commissionRate}% per sale</div>
+        <button className="mt-3.5 bg-primary border-none rounded-xl py-3 w-full text-white text-sm font-extrabold cursor-pointer">
+          Request Payout via M-Pesa →
+        </button>
       </div>
-      <div style={S.statGrid}>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-2.5 px-4 pt-3">
         {[
           [`KSh ${Number(totalEarnings).toLocaleString()}`, "Total Earned", "#00D97E"],
           [totalSales.toString(), "Total Sales", "#FFD600"],
           [`${commissionRate}%`, "Commission Rate", "#00B4FF"],
           [products.length.toString(), "Active Listings", "#FF4D00"],
         ].map(([value, label, color]) => (
-          <div key={label} style={S.statCard}>
-            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", color }}>{value}</div>
-            <div style={{ fontSize: 11, color: "#666", fontWeight: 600, marginTop: 2 }}>{label}</div>
+          <div key={label as string} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3.5">
+            <div className="text-[22px] font-extrabold tracking-tight" style={{ color: color as string }}>{value}</div>
+            <div className="text-[11px] text-[#666] font-semibold mt-0.5">{label}</div>
           </div>
         ))}
       </div>
+
+      {/* Recent Orders */}
       {orders.length === 0 && products.length === 0 ? (
         <EmptyState icon="📊" title="No data yet" sub="Orders and products will appear once the database is populated" />
       ) : (
-        <div style={S.section}>
-          <div style={S.sectionTitle}>Recent Orders</div>
+        <div className="px-4 pt-5">
+          <div className="text-xs font-extrabold text-[#888] tracking-widest uppercase mb-3">Recent Orders</div>
           {orders.length === 0 ? (
             <EmptyState icon="🧾" title="No orders yet" sub="Orders will show up here" />
-          ) : orders.slice(0, 3).map((o: any) => (
-            <div key={o.id} style={S.orderRow}>
-              <div style={{ width: 40, height: 40, background: "#0C0C10", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>📦</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{o.customer_name || "Customer"}</div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{o.order_number}</div>
+          ) : orders.slice(0, 5).map((o: any) => (
+            <div key={o.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-[#0C0C10] rounded-xl flex items-center justify-center text-xl">📦</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-bold truncate">{o.customer_name || "Customer"}</div>
+                <div className="text-[11px] text-[#555] mt-0.5">{o.order_number}</div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#00D97E" }}>KSh {Number(o.total_amount).toLocaleString()}</div>
+              <div className="text-right">
+                <div className="text-[13px] font-extrabold" style={{ color: "#00D97E" }}>KSh {Number(o.total_amount).toLocaleString()}</div>
                 <span style={statusPill(o.status)}>{STATUS_STYLE[o.status]?.label || o.status}</span>
               </div>
             </div>
@@ -170,43 +158,52 @@ export default function AgentDashboard() {
   );
 
   const ProductsTab = () => (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>My Products</div>
-      <div style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>Share your link to get sales</div>
+    <div className="px-4 pt-4">
+      <div className="text-xl font-extrabold mb-1">My Products</div>
+      <div className="text-[13px] text-[#555] mb-4">Share your link to earn commission on every sale</div>
       {products.length === 0 ? (
-        <EmptyState icon="📦" title="No products" sub="Add products from the Admin panel" />
+        <EmptyState icon="📦" title="No products" sub="Products will appear once added from the Admin panel" />
       ) : products.map((p: any) => (
-        <div key={p.id} style={S.productRow}>
-          <div style={{ width: 48, height: 48, background: "#0C0C10", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{p.emoji || "📦"}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>{p.name}</div>
-            <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>KSh {Number(p.price).toLocaleString()} · {p.total_sold} sold</div>
-            <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center" }}>
-              <span style={{ ...statusPill(p.stock === 0 ? "cancelled" : "delivered"), fontSize: 9 }}>{p.stock === 0 ? "Out of Stock" : `${p.stock} in stock`}</span>
-              <span style={{ fontSize: 10, color: "#FF4D00", fontWeight: 700 }}>+KSh {Math.round(Number(p.price) * commissionRate / 100).toLocaleString()} commission</span>
+        <div key={p.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 bg-[#0C0C10] rounded-xl flex items-center justify-center text-[26px] shrink-0">{p.emoji || "📦"}</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-bold truncate">{p.name}</div>
+            <div className="text-[11px] text-[#555] mt-0.5">KSh {Number(p.price).toLocaleString()} · {p.total_sold} sold</div>
+            <div className="flex gap-1.5 items-center mt-1.5 flex-wrap">
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded" style={statusPill(p.stock === 0 ? "cancelled" : "delivered")}>{p.stock === 0 ? "Out of Stock" : `${p.stock} in stock`}</span>
+              <span className="text-[10px] text-primary font-bold">+KSh {Math.round(Number(p.price) * commissionRate / 100).toLocaleString()} commission</span>
             </div>
           </div>
-          <button onClick={() => { setShareProduct(p); setShareModal(true); }} style={{ background: "#1F1F2E", border: "1px solid #2A2A36", borderRadius: 10, padding: "8px 12px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Share 🔗</button>
+          <button onClick={() => { setShareProduct(p); setShareModal(true); }}
+            className="bg-[#1F1F2E] border border-[#2A2A36] rounded-xl px-3 py-2 text-white text-[11px] font-bold cursor-pointer flex items-center gap-1 shrink-0">
+            <Link2 size={12} /> Share
+          </button>
         </div>
       ))}
     </div>
   );
 
   const OrdersTab = () => (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>My Orders</div>
-      <div style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>All customer orders</div>
+    <div className="px-4 pt-4">
+      <div className="text-xl font-extrabold mb-1">My Orders</div>
+      <div className="text-[13px] text-[#555] mb-4">All customer orders and your commission earnings</div>
       {orders.length === 0 ? (
         <EmptyState icon="🧾" title="No orders yet" sub="Orders from customers will appear here" />
       ) : orders.map((o: any) => (
-        <div key={o.id} style={{ ...S.orderRow, flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: "#555", fontWeight: 700 }}>{o.order_number}</span>
+        <div key={o.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 mb-2">
+          <div className="flex justify-between items-center">
+            <span className="text-[11px] text-[#555] font-bold">{o.order_number}</span>
             <span style={statusPill(o.status)}>{STATUS_STYLE[o.status]?.label || o.status}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #1F1F2E", paddingTop: 8 }}>
-            <span style={{ fontSize: 12, color: "#555" }}>Sale: KSh {Number(o.total_amount).toLocaleString()}</span>
-            <span style={{ fontSize: 13, fontWeight: 800, color: "#00D97E" }}>Commission: KSh {Number(o.commission_amount).toLocaleString()}</span>
+          <div className="flex justify-between items-center border-t border-[#1F1F2E] pt-2 mt-2">
+            <div>
+              <div className="text-xs text-[#555]">{o.customer_name || "Customer"}</div>
+              <div className="text-xs text-[#444] mt-0.5">{new Date(o.created_at).toLocaleDateString()}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-[#555]">Sale: KSh {Number(o.total_amount).toLocaleString()}</div>
+              <div className="text-[13px] font-extrabold mt-0.5" style={{ color: "#00D97E" }}>Commission: KSh {Number(o.commission_amount).toLocaleString()}</div>
+            </div>
           </div>
         </div>
       ))}
@@ -214,28 +211,33 @@ export default function AgentDashboard() {
   );
 
   const PayoutsTab = () => (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Payouts</div>
-      <div style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>Earnings sent to your M-Pesa</div>
-      <div style={{ ...S.balanceCard, margin: "0 0 16px" }}>
-        <div style={S.balanceGlow} />
-        <div style={{ fontSize: 11, color: "#FF8C5A", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>Available to Request</div>
-        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-1px", color: "#fff", margin: "6px 0 2px" }}>KSh {Number(pendingEarnings).toLocaleString()}</div>
-        <div style={{ fontSize: 12, color: "#AA7755" }}>Will be sent to {agentPhone}</div>
-        <button style={S.requestBtn}>Request Payout Now →</button>
+    <div className="px-4 pt-4">
+      <div className="text-xl font-extrabold mb-1">Payouts</div>
+      <div className="text-[13px] text-[#555] mb-4">Earnings sent to your M-Pesa</div>
+
+      {/* Balance Card */}
+      <div className="bg-gradient-to-br from-[#1A0A00] via-[#2B1400] to-[#1A0A00] border border-[#3D1F00] rounded-2xl p-5 relative overflow-hidden mb-4">
+        <div className="absolute -top-10 -right-10 w-[120px] h-[120px] bg-[radial-gradient(circle,rgba(255,77,0,0.3)_0%,transparent_70%)] rounded-full" />
+        <div className="text-[11px] text-[#FF8C5A] font-bold tracking-widest uppercase">Available to Request</div>
+        <div className="text-[28px] font-extrabold tracking-tighter text-white my-1.5">KSh {Number(pendingEarnings).toLocaleString()}</div>
+        <div className="text-xs text-[#AA7755]">Will be sent to {agentPhone}</div>
+        <button className="mt-3.5 bg-primary border-none rounded-xl py-3 w-full text-white text-sm font-extrabold cursor-pointer">
+          Request Payout Now →
+        </button>
       </div>
-      <div style={S.sectionTitle}>Payout History</div>
+
+      <div className="text-xs font-extrabold text-[#888] tracking-widest uppercase mb-3">Payout History</div>
       {payouts.length === 0 ? (
         <EmptyState icon="💸" title="No payouts yet" sub="Request your first payout above" />
       ) : payouts.map((p: any) => (
-        <div key={p.id} style={{ ...S.orderRow, flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 18, fontWeight: 800, color: "#00D97E" }}>KSh {Number(p.amount).toLocaleString()}</span>
+        <div key={p.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 mb-2">
+          <div className="flex justify-between items-center">
+            <span className="text-lg font-extrabold" style={{ color: "#00D97E" }}>KSh {Number(p.amount).toLocaleString()}</span>
             <span style={statusPill(p.status)}>{STATUS_STYLE[p.status]?.label || p.status}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontSize: 11, color: "#555" }}>{new Date(p.created_at).toLocaleDateString()}</span>
-            <span style={{ fontSize: 11, color: "#444", fontFamily: "monospace" }}>Ref: {p.payout_ref}</span>
+          <div className="flex justify-between mt-2 pt-2 border-t border-[#1F1F2E]">
+            <span className="text-[11px] text-[#555]">{new Date(p.created_at).toLocaleDateString()}</span>
+            <span className="text-[11px] text-[#444] font-mono">Ref: {p.payout_ref}</span>
           </div>
         </div>
       ))}
@@ -243,19 +245,25 @@ export default function AgentDashboard() {
   );
 
   const ProfileTab = () => (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 0 20px" }}>
-        <div style={{ width: 72, height: 72, borderRadius: 20, background: "linear-gradient(135deg,#FF4D00,#FF8C00)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 26, marginBottom: 12 }}>{agentAvatar}</div>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>{agentName}</div>
-        <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>{agentPhone}</div>
-        <div style={{ marginTop: 8, background: "#1A1000", border: `1px solid ${TIER_COLOR[tier]}44`, borderRadius: 10, padding: "5px 14px", fontSize: 12, fontWeight: 800, color: TIER_COLOR[tier] }}>⭐ {tier} Agent · {commissionRate}% Commission</div>
+    <div className="px-4 pt-4">
+      <div className="flex flex-col items-center py-6">
+        <div className="w-[72px] h-[72px] rounded-2xl bg-gradient-to-br from-primary to-[#FF8C00] flex items-center justify-center font-black text-[26px] text-white mb-3">{agentAvatar}</div>
+        <div className="text-xl font-extrabold">{agentName}</div>
+        <div className="text-[13px] text-[#555] mt-1">{agentPhone}</div>
+        <div className="mt-2 px-3.5 py-1 rounded-xl text-xs font-extrabold border" style={{ background: "#1A1000", borderColor: `${TIER_COLOR[tier]}44`, color: TIER_COLOR[tier] }}>⭐ {tier} Agent · {commissionRate}% Commission</div>
       </div>
-      {([["📱", "M-Pesa Number", agentPhone || "Not set"], ["💼", "Total Sales", `${totalSales} orders`], ["💰", "Total Earned", `KSh ${Number(totalEarnings).toLocaleString()}`]] as const).map(([icon, label, value]) => (
-        <div key={label} style={{ ...S.productRow, marginBottom: 8 }}>
-          <span style={{ fontSize: 22 }}>{icon}</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: "#555", fontWeight: 600 }}>{label}</div>
-            <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{value}</div>
+      {([
+        ["📱", "M-Pesa Number", agentPhone || "Not set"],
+        ["💼", "Total Sales", `${totalSales} orders`],
+        ["💰", "Total Earned", `KSh ${Number(totalEarnings).toLocaleString()}`],
+        ["📦", "Active Products", `${products.length} listings`],
+        ["🧾", "Total Orders", `${orders.length} orders`],
+      ] as const).map(([icon, label, value]) => (
+        <div key={label} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 flex items-center gap-3 mb-2">
+          <span className="text-[22px]">{icon}</span>
+          <div className="flex-1">
+            <div className="text-[11px] text-[#555] font-semibold">{label}</div>
+            <div className="text-sm font-bold mt-0.5">{value}</div>
           </div>
         </div>
       ))}
@@ -266,47 +274,59 @@ export default function AgentDashboard() {
   const ActiveTab = TABS[tab];
 
   return (
-    <div style={S.root}>
-      <div style={S.topBar}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }} onClick={() => navigate("/")}>
-            <div style={{ width: 32, height: 32, background: "linear-gradient(135deg, #FF4D00, #FF8C00)", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 900, color: "#fff" }}>P</div>
+    <div className="font-['DM_Sans',sans-serif] bg-[#0C0C10] min-h-screen max-w-[430px] mx-auto text-[#F0EEF8] relative pb-[72px]">
+      {/* Top Bar */}
+      <div className="px-5 py-4 bg-[#0C0C10] sticky top-0 z-50 border-b border-[#1C1C24]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+            <div className="w-8 h-8 bg-gradient-to-br from-primary to-[#FF8C00] rounded-[9px] flex items-center justify-center text-sm font-black text-white">P</div>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.4px" }}>PayLoom Agent</div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: "#FF4D00", letterSpacing: 2, textTransform: "uppercase" }}>Instants</div>
+              <div className="text-[15px] font-extrabold tracking-tight">PayLoom Agent</div>
+              <div className="text-[9px] font-bold text-primary tracking-widest uppercase">Instants</div>
             </div>
           </div>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#16161E", border: "1px solid #2A2A36", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16, position: "relative" }}>
-            🔔
+          <div className="w-9 h-9 rounded-xl bg-[#16161E] border border-[#2A2A36] flex items-center justify-center cursor-pointer relative">
+            <Bell size={16} className="text-[#666]" />
           </div>
         </div>
       </div>
-      <div style={{ paddingBottom: 20 }}>
+
+      <div className="pb-5">
         <ActiveTab />
       </div>
+
+      {/* Share Modal */}
       {shareModal && shareProduct && (
-        <div style={S.modal} onClick={() => setShareModal(false)}>
-          <div style={S.modalBox} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Share Product Link 🔗</div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>Share this link to earn commission per sale</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#0C0C10", borderRadius: 12, padding: "12px 14px" }}>
-              <span style={{ fontSize: 28 }}>{shareProduct.emoji || "📦"}</span>
+        <div className="fixed inset-0 bg-black/80 flex items-end z-[999]" onClick={() => setShareModal(false)}>
+          <div className="bg-[#16161E] rounded-t-2xl p-6 pb-10 w-full max-w-[430px] mx-auto border border-[#2A2A36]" onClick={e => e.stopPropagation()}>
+            <div className="text-lg font-extrabold mb-1">Share Product Link 🔗</div>
+            <div className="text-[13px] text-[#555] mb-4">Share this link to earn commission per sale</div>
+            <div className="flex items-center gap-2.5 bg-[#0C0C10] rounded-xl p-3">
+              <span className="text-[28px]">{shareProduct.emoji || "📦"}</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{shareProduct.name}</div>
-                <div style={{ fontSize: 12, color: "#FF4D00", fontWeight: 700 }}>KSh {Number(shareProduct.price).toLocaleString()}</div>
+                <div className="text-[13px] font-bold">{shareProduct.name}</div>
+                <div className="text-xs text-primary font-bold">KSh {Number(shareProduct.price).toLocaleString()}</div>
               </div>
             </div>
-            <div style={{ background: "#0C0C10", border: "1px solid #2A2A36", borderRadius: 10, padding: "12px 14px", fontSize: 12, color: "#FF8C5A", wordBreak: "break-all", marginTop: 12 }}>
-              https://shop.payloom.co/p/{shareProduct.id}
+            <div className="bg-[#0C0C10] border border-[#2A2A36] rounded-xl p-3 text-xs text-[#FF8C5A] break-all mt-3">
+              {window.location.origin}/shop?ref={agent?.id || 'agent'}&product={shareProduct.id}
             </div>
-            <button style={S.copyBtn} onClick={() => setShareModal(false)}>Done ✓</button>
+            <button onClick={() => handleCopyLink(shareProduct.id)}
+              className="bg-primary border-none rounded-xl py-3.5 w-full text-white text-sm font-extrabold cursor-pointer mt-3.5 flex items-center justify-center gap-2">
+              {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy Link</>}
+            </button>
+            <button onClick={() => setShareModal(false)}
+              className="bg-[#1F1F2E] border border-[#2A2A36] rounded-xl py-3 w-full text-[#888] text-[13px] font-bold cursor-pointer mt-2">Done</button>
           </div>
         </div>
       )}
-      <div style={S.nav}>
+
+      {/* Bottom Nav */}
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-[#0C0C10] border-t border-[#1C1C24] flex py-2.5 pb-4 z-50">
         {NAV_ITEMS.map(({ id, icon, label }) => (
-          <div key={id} style={navItem(tab === id)} onClick={() => setTab(id)}>
-            <span style={{ fontSize: 20 }}>{icon}</span>
+          <div key={id} className={`flex-1 flex flex-col items-center gap-0.5 cursor-pointer text-[10px] ${tab === id ? 'text-primary font-extrabold' : 'text-[#3A3A4A] font-medium'}`}
+            onClick={() => setTab(id)}>
+            {icon}
             <span>{label}</span>
           </div>
         ))}

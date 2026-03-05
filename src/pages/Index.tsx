@@ -1,26 +1,19 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Shield, Zap, Users, Smartphone, Globe, ArrowRight } from "lucide-react";
 
 const FEATURES = [
-  { icon: "📱", title: "M-Pesa STK Push", desc: "One-tap mobile payments via Safaricom Daraja API" },
-  { icon: "🤝", title: "Agent Commerce", desc: "Agents sell, earn commission, get paid via B2C" },
-  { icon: "🔒", title: "PSP Compliant", desc: "Enterprise-grade security with role-based access" },
-  { icon: "📊", title: "Real-time Analytics", desc: "Track revenue, payouts, and agent performance" },
-  { icon: "🌍", title: "Pan-Africa Ready", desc: "Multi-currency with Flutterwave and M-Pesa" },
-  { icon: "⚡", title: "Instant Payouts", desc: "B2C disbursements to agents in seconds" },
-];
-
-const STATS = [
-  { value: "99.9%", label: "Uptime SLA" },
-  { value: "<200ms", label: "API Response" },
-  { value: "12+", label: "Payment Methods" },
-  { value: "5M+", label: "Transactions" },
+  { icon: <Smartphone size={24} />, title: "M-Pesa Payments", desc: "Accept mobile money payments via STK Push integration" },
+  { icon: <Users size={24} />, title: "Agent Network", desc: "Agents sell products, earn commission on every sale" },
+  { icon: <Shield size={24} />, title: "Secure Platform", desc: "Role-based access with encrypted transactions" },
+  { icon: <Zap size={24} />, title: "Instant Payouts", desc: "B2C disbursements to agent M-Pesa accounts" },
+  { icon: <Globe size={24} />, title: "Multi-Platform", desc: "Customer shop, agent app, and admin panel in one" },
+  { icon: <ArrowRight size={24} />, title: "Real-Time Data", desc: "Live order tracking, earnings, and inventory management" },
 ];
 
 const APPS = [
-  { id: "shop", title: "Customer Shop", subtitle: "Browse, cart & checkout", icon: "🛍️", route: "/shop", accent: "from-orange-500 to-amber-500" },
-  { id: "agent", title: "Agent Dashboard", subtitle: "Sell, earn & track", icon: "⚡", route: "/agent", accent: "from-emerald-500 to-teal-500" },
-  { id: "admin", title: "Admin Panel", subtitle: "Manage everything", icon: "🏢", route: "/admin", accent: "from-blue-500 to-indigo-500" },
+  { id: "shop", title: "Customer Shop", subtitle: "Browse, add to cart & pay via M-Pesa", icon: "🛍️", route: "/shop", accent: "from-primary to-payloom-orange-light" },
+  { id: "agent", title: "Agent Dashboard", subtitle: "Track sales, earnings & request payouts", icon: "⚡", route: "/agent", accent: "from-payloom-success to-emerald-600" },
 ];
 
 export default function Index() {
@@ -41,7 +34,6 @@ export default function Index() {
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#platforms" className="hover:text-foreground transition-colors">Platforms</a>
-            <a href="#stats" className="hover:text-foreground transition-colors">Stats</a>
           </div>
           <button onClick={() => navigate("/shop")} className="bg-primary text-primary-foreground px-5 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
             Open Shop →
@@ -60,15 +52,15 @@ export default function Index() {
           >
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs font-bold mb-8 border border-primary/20">
               <span className="w-2 h-2 bg-payloom-success rounded-full animate-pulse" />
-              Live — Production Ready
+              Platform Active
             </div>
             <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6">
-              Commerce for
+              Agent-Powered
               <br />
-              <span className="bg-gradient-to-r from-primary to-payloom-orange-light bg-clip-text text-transparent">Africa & Beyond</span>
+              <span className="bg-gradient-to-r from-primary to-payloom-orange-light bg-clip-text text-transparent">M-Pesa Commerce</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              PSP-compliant C2B/B2C platform. Accept M-Pesa payments, manage agent networks, disburse earnings — all from one dashboard.
+              A commerce platform where agents sell products, customers pay via M-Pesa, and agents earn commission — all managed from one system.
             </p>
           </motion.div>
           <motion.div
@@ -78,29 +70,34 @@ export default function Index() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <button onClick={() => navigate("/shop")} className="bg-primary text-primary-foreground px-8 py-3.5 rounded-2xl text-base font-extrabold hover:opacity-90 transition-opacity shadow-lg shadow-primary/25">
-              Start Shopping 🛍️
+              Browse Shop 🛍️
             </button>
-            <button onClick={() => navigate("/admin")} className="bg-card border border-border text-foreground px-8 py-3.5 rounded-2xl text-base font-bold hover:bg-accent transition-colors">
-              Admin Dashboard →
+            <button onClick={() => navigate("/agent")} className="bg-card border border-border text-foreground px-8 py-3.5 rounded-2xl text-base font-bold hover:bg-accent transition-colors">
+              Agent Dashboard →
             </button>
           </motion.div>
         </div>
       </section>
 
-      {/* Stats Strip */}
-      <section id="stats" className="border-y border-border bg-card/50">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4">
-          {STATS.map((stat, i) => (
+      {/* How It Works Strip */}
+      <section className="border-y border-border bg-card/50">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3">
+          {[
+            { step: "1", title: "Customer Shops", desc: "Browse products and add to cart" },
+            { step: "2", title: "Pay via M-Pesa", desc: "Complete payment with STK Push" },
+            { step: "3", title: "Agent Earns", desc: "Commission deposited automatically" },
+          ].map((s, i) => (
             <motion.div
-              key={stat.label}
+              key={s.step}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="text-center py-8 px-4 border-r border-border last:border-r-0"
+              className="text-center py-8 px-6 border-b md:border-b-0 md:border-r border-border last:border-0"
             >
-              <div className="text-3xl md:text-4xl font-black text-primary mb-1">{stat.value}</div>
-              <div className="text-xs text-muted-foreground font-semibold tracking-wide uppercase">{stat.label}</div>
+              <div className="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center font-black text-lg mx-auto mb-3">{s.step}</div>
+              <div className="text-base font-extrabold mb-1">{s.title}</div>
+              <div className="text-xs text-muted-foreground">{s.desc}</div>
             </motion.div>
           ))}
         </div>
@@ -110,8 +107,8 @@ export default function Index() {
       <section id="features" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Built for African Commerce</h2>
-            <p className="text-muted-foreground max-w-lg mx-auto">Everything you need to run a modern, agent-driven commerce platform with mobile money at its core.</p>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Platform Features</h2>
+            <p className="text-muted-foreground max-w-lg mx-auto">Everything needed to run an agent-driven commerce platform with mobile money.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {FEATURES.map((f, i) => (
@@ -123,7 +120,7 @@ export default function Index() {
                 transition={{ delay: i * 0.08 }}
                 className="bg-card border border-border rounded-2xl p-6 hover:border-primary/30 transition-colors group"
               >
-                <div className="text-3xl mb-4">{f.icon}</div>
+                <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">{f.icon}</div>
                 <h3 className="text-base font-extrabold mb-2 group-hover:text-primary transition-colors">{f.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
               </motion.div>
@@ -136,10 +133,10 @@ export default function Index() {
       <section id="platforms" className="py-24 px-6 bg-card/30">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Three Platforms, One Ecosystem</h2>
-            <p className="text-muted-foreground">Customer shop, agent app, and admin panel — all connected.</p>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Two Dashboards, One Platform</h2>
+            <p className="text-muted-foreground">Customer shop and agent dashboard — connected to the same backend.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {APPS.map((app, i) => (
               <motion.div
                 key={app.id}
@@ -154,7 +151,7 @@ export default function Index() {
                 <div className="text-4xl mb-5">{app.icon}</div>
                 <h3 className="text-xl font-extrabold mb-1">{app.title}</h3>
                 <p className="text-sm text-primary font-bold mb-3">{app.subtitle}</p>
-                <p className="text-sm text-muted-foreground mb-6">Full-featured dashboard with real-time data from Lovable Cloud.</p>
+                <p className="text-sm text-muted-foreground mb-6">Full-featured dashboard with real-time data from the database.</p>
                 <span className="text-primary font-extrabold text-sm group-hover:underline">Open →</span>
               </motion.div>
             ))}
@@ -166,10 +163,10 @@ export default function Index() {
       <section className="py-24 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <div className="bg-gradient-to-br from-primary/10 to-payloom-orange-light/5 border border-primary/20 rounded-3xl p-12">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Ready to Go Live?</h2>
-            <p className="text-muted-foreground mb-8 max-w-md mx-auto">Connect your M-Pesa credentials, add agents, and start processing payments today.</p>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Start Using PayLoom</h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">Browse the shop, check the agent dashboard, and explore what the platform can do.</p>
             <button onClick={() => navigate("/shop")} className="bg-primary text-primary-foreground px-8 py-3.5 rounded-2xl text-base font-extrabold hover:opacity-90 transition-opacity shadow-lg shadow-primary/25">
-              Launch PayLoom →
+              Open Shop →
             </button>
           </div>
         </div>
@@ -182,7 +179,7 @@ export default function Index() {
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-black text-xs">P</div>
             <span className="text-sm font-bold">PayLoom Instants</span>
           </div>
-          <div className="text-xs text-muted-foreground">© 2026 PayLoom. PSP-compliant commerce for Africa.</div>
+          <div className="text-xs text-muted-foreground">© 2026 PayLoom. Agent-powered M-Pesa commerce platform.</div>
         </div>
       </footer>
     </div>
