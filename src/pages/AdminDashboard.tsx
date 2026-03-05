@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Menu, X, LayoutDashboard, Users, CreditCard, Package, Banknote, ChevronRight, TrendingUp, Clock, AlertCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Menu, X, LayoutDashboard, Users, CreditCard, Package, Banknote, ChevronRight, TrendingUp, Clock, AlertCircle, LogOut } from "lucide-react";
+import { MOCK_AGENTS, MOCK_TRANSACTIONS, MOCK_PRODUCTS_ADMIN, MOCK_MONTHLY } from "@/data/mockData";
 
 const TIER_COLOR: Record<string, string> = { Gold: "#FFD700", Silver: "#C0C0C0", Bronze: "#CD7F32", Platinum: "#00E5FF" };
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
@@ -15,6 +17,7 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [tab, setTab] = useState("overview");
   const [payoutModal, setPayoutModal] = useState(false);
   const [payoutAgent, setPayoutAgent] = useState<any>(null);
@@ -26,7 +29,7 @@ export default function AdminDashboard() {
   const [agentSearch, setAgentSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const { data: agents = [] } = useQuery({
+  const { data: dbAgents = [] } = useQuery({
     queryKey: ["admin-agents"],
     queryFn: async () => {
       const { data, error } = await supabase.from("agents").select("*, profiles(full_name, phone)");
@@ -44,7 +47,7 @@ export default function AdminDashboard() {
     },
   });
 
-  const { data: transactions = [] } = useQuery({
+  const { data: dbTransactions = [] } = useQuery({
     queryKey: ["admin-transactions"],
     queryFn: async () => {
       const { data, error } = await supabase.from("transactions").select("*, agents(profiles(full_name), mpesa_phone)").order("created_at", { ascending: false });
@@ -53,7 +56,7 @@ export default function AdminDashboard() {
     },
   });
 
-  const { data: productsAdmin = [] } = useQuery({
+  const { data: dbProducts = [] } = useQuery({
     queryKey: ["admin-products"],
     queryFn: async () => {
       const { data, error } = await supabase.from("products").select("*, categories(name)").order("total_sold", { ascending: false });
@@ -62,7 +65,7 @@ export default function AdminDashboard() {
     },
   });
 
-  const { data: adminPayouts = [] } = useQuery({
+  const { data: dbPayouts = [] } = useQuery({
     queryKey: ["admin-payouts"],
     queryFn: async () => {
       const { data, error } = await supabase.from("payouts").select("*, agents(profiles(full_name), mpesa_phone)").order("created_at", { ascending: false });
@@ -71,15 +74,31 @@ export default function AdminDashboard() {
     },
   });
 
-  const totalRevenue = transactions.filter((t: any) => t.type === "C2B" && t.status === "completed").reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const totalPayoutsAmount = adminPayouts.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + Number(p.amount), 0);
-  const pendingPayouts = agents.reduce((s: number, a: any) => s + a.pending, 0);
+  // Use mock data as fallback
+  const agents = dbAgents.length > 0 ? dbAgents : MOCK_AGENTS;
+  const transactions = dbTransactions.length > 0 ? dbTransactions : MOCK_TRANSACTIONS;
+  const productsAdmin = dbProducts.length > 0 ? dbProducts : MOCK_PRODUCTS_ADMIN;
+  const adminPayouts = dbPayouts;
+
+  const totalRevenue = dbTransactions.length > 0
+    ? transactions.filter((t: any) => t.type === "C2B" && t.status === "completed").reduce((s: number, t: any) => s + Number(t.amount), 0)
+    : MOCK_MONTHLY.reduce((s, m) => s + m.revenue, 0);
+  const totalPayoutsAmount = dbPayouts.length > 0
+    ? adminPayouts.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + Number(p.amount), 0)
+    : MOCK_MONTHLY.reduce((s, m) => s + m.payouts, 0);
+  const pendingPayouts = agents.reduce((s: number, a: any) => s + (a.pending || 0), 0);
   const activeAgents = agents.filter((a: any) => a.status === "active").length;
+  const maxRevenue = Math.max(...MOCK_MONTHLY.map(m => m.revenue));
 
   const handlePayout = () => {
     setPaying(true);
     setTimeout(() => { setPaying(false); setPaidDone(true); }, 2500);
     setTimeout(() => { setPaidDone(false); setPayoutModal(false); setPayoutAgent(null); }, 5000);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
   };
 
   const pill = (type: string) => ({
@@ -118,37 +137,58 @@ export default function AdminDashboard() {
     <div>
       <div className="text-xl md:text-2xl font-extrabold tracking-tight mb-1">Dashboard Overview</div>
       <div className="text-sm text-muted-foreground mb-6">
-        {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+        {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })} — PayLoom Instants HQ
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
-        <KpiCard label="Revenue" value={totalRevenue > 0 ? `KSh ${(totalRevenue / 1000).toFixed(0)}K` : "KSh 0"} accent="#00D97E" icon={<TrendingUp size={16} />} />
-        <KpiCard label="Paid Out" value={totalPayoutsAmount > 0 ? `KSh ${(totalPayoutsAmount / 1000).toFixed(0)}K` : "KSh 0"} accent="#FF8C00" icon={<Banknote size={16} />} />
-        <KpiCard label="Pending" value={`KSh ${pendingPayouts.toLocaleString()}`} accent="#FFD600" icon={<Clock size={16} />} />
+        <KpiCard label="Revenue" value={`KSh ${(totalRevenue / 1000).toFixed(0)}K`} accent="#00D97E" icon={<TrendingUp size={16} />} />
+        <KpiCard label="Paid Out" value={`KSh ${(totalPayoutsAmount / 1000).toFixed(0)}K`} accent="#FF8C00" icon={<Banknote size={16} />} />
+        <KpiCard label="Pending" value={`KSh ${(pendingPayouts / 1000).toFixed(1)}K`} accent="#FFD600" icon={<Clock size={16} />} />
         <KpiCard label="Agents" value={`${activeAgents} / ${agents.length}`} accent="#00B4FF" icon={<Users size={16} />} />
       </div>
-      {agents.length === 0 && transactions.length === 0 ? (
-        <EmptyState icon="📊" title="No data yet" sub="Add agents and products to see live analytics here" />
-      ) : (
-        <div className="bg-card border border-border rounded-2xl p-5 md:p-6">
-          <div className="text-xs font-extrabold text-muted-foreground tracking-widest uppercase mb-4">Top Performing Agents</div>
-          {agents.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-5">No agents registered yet</div>
-          ) : [...agents].sort((a: any, b: any) => b.earned - a.earned).slice(0, 4).map((a: any, i: number) => (
-            <div key={a.id} className="flex items-center gap-3 mb-3 last:mb-0">
-              <div className="text-base font-extrabold w-5" style={{ color: i === 0 ? "#FFD700" : "#444" }}>#{i + 1}</div>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0"
-                style={{ background: `${TIER_COLOR[a.tier] || "#FF4D00"}22`, border: `2px solid ${TIER_COLOR[a.tier] || "#FF4D00"}44`, color: TIER_COLOR[a.tier] || "#FF4D00" }}>
-                {a.avatar}
+
+      {/* Revenue Chart */}
+      <div className="bg-card border border-border rounded-2xl p-5 md:p-6 mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <div className="text-xs font-extrabold text-muted-foreground tracking-widest uppercase">Monthly Revenue vs Payouts</div>
+          <div className="flex gap-4 text-[11px]">
+            <span style={{ color: "#00D97E" }}>■ Revenue</span>
+            <span style={{ color: "#FF8C00" }}>■ Payouts</span>
+          </div>
+        </div>
+        <div className="flex gap-2 items-end h-[140px]">
+          {MOCK_MONTHLY.map((m) => (
+            <div key={m.month} className="flex-1 flex flex-col gap-1">
+              <div className="flex gap-0.5 items-end h-[120px]">
+                <div className="flex-1 rounded-t" style={{ height: `${Math.round(m.revenue / maxRevenue * 100)}%`, minHeight: 4, background: "linear-gradient(180deg,#00D97E,#00A86B)", transition: "height 0.6s" }} />
+                <div className="flex-1 rounded-t" style={{ height: `${Math.round(m.payouts / maxRevenue * 100)}%`, minHeight: 4, background: "linear-gradient(180deg,#FF8C00,#FF4D00)", transition: "height 0.6s" }} />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold truncate">{a.name}</div>
-                <div className="text-xs text-muted-foreground">{a.sales} sales · {a.tier}</div>
-              </div>
-              <div className="text-sm font-extrabold text-right" style={{ color: "#00D97E" }}>KSh {a.earned.toLocaleString()}</div>
+              <div className="text-[10px] text-muted-foreground text-center">{m.month}</div>
             </div>
           ))}
         </div>
-      )}
+      </div>
+
+      {/* Top Agents */}
+      <div className="bg-card border border-border rounded-2xl p-5 md:p-6">
+        <div className="text-xs font-extrabold text-muted-foreground tracking-widest uppercase mb-4">Top Performing Agents</div>
+        {[...agents].sort((a: any, b: any) => (b.earned || 0) - (a.earned || 0)).slice(0, 4).map((a: any, i: number) => (
+          <div key={a.id} className="flex items-center gap-3 mb-3 last:mb-0">
+            <div className="text-base font-extrabold w-5" style={{ color: i === 0 ? "#FFD700" : "#444" }}>#{i + 1}</div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0"
+              style={{ background: `${TIER_COLOR[a.tier] || "#FF4D00"}22`, border: `2px solid ${TIER_COLOR[a.tier] || "#FF4D00"}44`, color: TIER_COLOR[a.tier] || "#FF4D00" }}>
+              {a.avatar}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold truncate">{a.name}</div>
+              <div className="text-xs text-muted-foreground">{a.sales} sales · {a.tier}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-extrabold" style={{ color: "#00D97E" }}>KSh {(a.earned || 0).toLocaleString()}</div>
+              <div className="text-[10px] text-muted-foreground">total earned</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -164,9 +204,7 @@ export default function AdminDashboard() {
           <input className="bg-card border border-border rounded-xl px-4 py-2.5 text-sm text-foreground outline-none w-full sm:w-56"
             placeholder="🔍  Search agents..." value={agentSearch} onChange={e => setAgentSearch(e.target.value)} />
         </div>
-        {filtered.length === 0 ? (
-          <EmptyState icon="👥" title="No agents yet" sub="Agents will appear here once they register via the platform" />
-        ) : filtered.map((a: any) => (
+        {filtered.map((a: any) => (
           <div key={a.id} className="bg-card border border-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 mb-3 cursor-pointer hover:border-primary/30 transition-colors"
             onClick={() => { setViewAgent(a); setAgentModal(true); }}>
             <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -183,8 +221,8 @@ export default function AdminDashboard() {
                 <div className="text-xs text-muted-foreground mt-1">{a.phone} · Joined {a.joined}</div>
                 <div className="flex gap-4 mt-2 flex-wrap">
                   <span className="text-xs text-muted-foreground">Sales: <b className="text-foreground">{a.sales}</b></span>
-                  <span className="text-xs text-muted-foreground">Earned: <b style={{ color: "#00D97E" }}>KSh {a.earned.toLocaleString()}</b></span>
-                  <span className="text-xs text-muted-foreground">Pending: <b style={{ color: "#FFD600" }}>KSh {a.pending.toLocaleString()}</b></span>
+                  <span className="text-xs text-muted-foreground">Earned: <b style={{ color: "#00D97E" }}>KSh {(a.earned || 0).toLocaleString()}</b></span>
+                  <span className="text-xs text-muted-foreground">Pending: <b style={{ color: "#FFD600" }}>KSh {(a.pending || 0).toLocaleString()}</b></span>
                 </div>
               </div>
             </div>
@@ -211,29 +249,25 @@ export default function AdminDashboard() {
             </button>
           ))}
         </div>
-        {filtered.length === 0 ? (
-          <EmptyState icon="💳" title="No transactions" sub="Transactions will appear when payments are processed" />
-        ) : (
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <div className="min-w-[600px]">
-                <div className="grid grid-cols-6 px-5 py-3 bg-accent/50 border-b border-border text-[10px] font-extrabold text-muted-foreground tracking-widest uppercase">
-                  <span>TX ID</span><span>Agent</span><span>Amount</span><span>Type</span><span>Status</span><span>M-Pesa Ref</span>
-                </div>
-                {filtered.map((t: any) => (
-                  <div key={t.id} className="grid grid-cols-6 px-5 py-3 border-b border-border/50 text-sm items-center">
-                    <span className="font-mono text-xs" style={{ color: "#FF8C00" }}>{t.transaction_ref}</span>
-                    <span className="text-xs truncate">{t.agent_name}</span>
-                    <span className="text-sm font-bold" style={{ color: t.type === "B2C" ? "#FF8C00" : "#00D97E" }}>{t.type === "B2C" ? "−" : "+"}KSh {Number(t.amount).toLocaleString()}</span>
-                    <span style={pill(t.type)}>{t.type}</span>
-                    <span style={pill(t.status)}>{t.status}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground">{t.mpesa_ref || "—"}</span>
-                  </div>
-                ))}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[600px]">
+              <div className="grid grid-cols-6 px-5 py-3 bg-accent/50 border-b border-border text-[10px] font-extrabold text-muted-foreground tracking-widest uppercase">
+                <span>TX ID</span><span>Agent</span><span>Amount</span><span>Type</span><span>Status</span><span>M-Pesa Ref</span>
               </div>
+              {filtered.map((t: any) => (
+                <div key={t.id} className="grid grid-cols-6 px-5 py-3 border-b border-border/50 text-sm items-center">
+                  <span className="font-mono text-xs" style={{ color: "#FF8C00" }}>{t.transaction_ref}</span>
+                  <span className="text-xs truncate">{t.agent_name}</span>
+                  <span className="text-sm font-bold" style={{ color: t.type === "B2C" ? "#FF8C00" : "#00D97E" }}>{t.type === "B2C" ? "−" : "+"}KSh {Number(t.amount).toLocaleString()}</span>
+                  <span style={pill(t.type)}>{t.type}</span>
+                  <span style={pill(t.status)}>{t.status}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{t.mpesa_ref || "—"}</span>
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -245,35 +279,32 @@ export default function AdminDashboard() {
           <div className="text-xl md:text-2xl font-extrabold tracking-tight mb-1">Product Catalog</div>
           <div className="text-sm text-muted-foreground">Manage PayLoom's inventory</div>
         </div>
+        <button className="bg-primary text-primary-foreground rounded-xl px-4 py-2.5 text-sm font-extrabold hover:opacity-90 transition-opacity">+ Add Product</button>
       </div>
-      {productsAdmin.length === 0 ? (
-        <EmptyState icon="📦" title="No products" sub="Add products to the database to see them here" />
-      ) : (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="min-w-[550px]">
-              <div className="grid grid-cols-5 px-5 py-3 bg-accent/50 border-b border-border text-[10px] font-extrabold text-muted-foreground tracking-widest uppercase">
-                <span className="col-span-1">Product</span><span>Category</span><span>Price</span><span>Stock</span><span>Sold</span>
-              </div>
-              {productsAdmin.map((p: any) => (
-                <div key={p.id} className="grid grid-cols-5 px-5 py-3 border-b border-border/50 text-sm items-center">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xl">{p.emoji || "📦"}</span>
-                    <div className="min-w-0">
-                      <div className="text-sm font-bold truncate">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">{p.total_sold} sold</div>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{(p as any).categories?.name || "—"}</span>
-                  <span className="text-sm font-bold">KSh {Number(p.price).toLocaleString()}</span>
-                  <span>{p.stock === 0 ? <span style={pill("failed")}>Out</span> : <span style={pill("completed")}>{p.stock}</span>}</span>
-                  <span className="text-sm font-extrabold" style={{ color: "#00D97E" }}>{p.total_sold}</span>
-                </div>
-              ))}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="min-w-[550px]">
+            <div className="grid grid-cols-5 px-5 py-3 bg-accent/50 border-b border-border text-[10px] font-extrabold text-muted-foreground tracking-widest uppercase">
+              <span className="col-span-1">Product</span><span>Category</span><span>Price</span><span>Stock</span><span>Sold</span>
             </div>
+            {productsAdmin.map((p: any) => (
+              <div key={p.id} className="grid grid-cols-5 px-5 py-3 border-b border-border/50 text-sm items-center">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">{p.emoji || "📦"}</span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold truncate">{p.name}</div>
+                    <div className="text-xs text-muted-foreground">{p.total_sold} sold</div>
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground">{p.categories?.name || "—"}</span>
+                <span className="text-sm font-bold">KSh {Number(p.price).toLocaleString()}</span>
+                <span>{p.stock === 0 ? <span style={pill("failed")}>Out</span> : <span style={pill("completed")}>{p.stock}</span>}</span>
+                <span className="text-sm font-extrabold" style={{ color: "#00D97E" }}>{p.total_sold}</span>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 
@@ -284,57 +315,53 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <KpiCard label="Total Pending" value={`KSh ${pendingPayouts.toLocaleString()}`} accent="#FFD600" icon={<Clock size={16} />} />
         <KpiCard label="Paid Out" value={`KSh ${totalPayoutsAmount.toLocaleString()}`} accent="#00D97E" icon={<TrendingUp size={16} />} />
-        <KpiCard label="Agents Pending" value={`${agents.filter((a: any) => a.pending > 0).length} agents`} accent="#FF4D00" icon={<AlertCircle size={16} />} />
+        <KpiCard label="Agents Pending" value={`${agents.filter((a: any) => (a.pending || 0) > 0).length} agents`} accent="#FF4D00" icon={<AlertCircle size={16} />} />
       </div>
-      {agents.filter((a: any) => a.pending > 0).length === 0 ? (
-        <EmptyState icon="💸" title="No pending payouts" sub="Agent earnings will appear here when orders are processed" />
-      ) : (
-        <div className="bg-card border border-border rounded-2xl p-5 mb-6">
-          <div className="text-xs font-extrabold text-muted-foreground tracking-widest uppercase mb-4">Agents Awaiting Payout</div>
-          {agents.filter((a: any) => a.pending > 0).map((a: any) => (
-            <div key={a.id} className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 border-b border-border/50 last:border-0">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0"
-                  style={{ background: `${TIER_COLOR[a.tier] || "#FF4D00"}22`, border: `2px solid ${TIER_COLOR[a.tier] || "#FF4D00"}44`, color: TIER_COLOR[a.tier] || "#FF4D00" }}>
-                  {a.avatar}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">{a.name}</div>
-                  <div className="text-xs text-muted-foreground">M-Pesa: {a.phone}</div>
-                </div>
+
+      {/* Agents awaiting payout */}
+      <div className="bg-card border border-border rounded-2xl p-5 mb-6">
+        <div className="text-xs font-extrabold text-muted-foreground tracking-widest uppercase mb-4">Agents Awaiting Payout</div>
+        {agents.filter((a: any) => (a.pending || 0) > 0).map((a: any) => (
+          <div key={a.id} className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 border-b border-border/50 last:border-0">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0"
+                style={{ background: `${TIER_COLOR[a.tier] || "#FF4D00"}22`, border: `2px solid ${TIER_COLOR[a.tier] || "#FF4D00"}44`, color: TIER_COLOR[a.tier] || "#FF4D00" }}>
+                {a.avatar}
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-base font-extrabold" style={{ color: "#FFD600" }}>KSh {a.pending.toLocaleString()}</div>
-                <button className="bg-primary text-primary-foreground rounded-xl px-3 py-2 text-xs font-extrabold shrink-0 hover:opacity-90 transition-opacity"
-                  onClick={() => { setPayoutAgent(a); setPayoutModal(true); }}>Send via M-Pesa →</button>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate">{a.name}</div>
+                <div className="text-xs text-muted-foreground">M-Pesa: {a.phone || a.mpesa_phone}</div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-      {adminPayouts.length > 0 && (
-        <div>
-          <div className="text-xs font-extrabold text-muted-foreground tracking-widest uppercase mb-3">Recent Payouts</div>
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <div className="min-w-[500px]">
-                <div className="grid grid-cols-5 px-5 py-3 bg-accent/50 border-b border-border text-[10px] font-extrabold text-muted-foreground tracking-widest uppercase">
-                  <span>Agent</span><span>Amount</span><span>Ref</span><span>Date</span><span>Status</span>
-                </div>
-                {adminPayouts.map((p: any) => (
-                  <div key={p.id} className="grid grid-cols-5 px-5 py-3 border-b border-border/50 text-sm items-center">
-                    <span className="font-semibold truncate">{p.agent_name}</span>
-                    <span className="font-extrabold" style={{ color: "#FF8C00" }}>KSh {Number(p.amount).toLocaleString()}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{p.payout_ref}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</span>
-                    <span style={pill(p.status)}>{p.status}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="flex items-center gap-3">
+              <div className="text-base font-extrabold" style={{ color: "#FFD600" }}>KSh {(a.pending || 0).toLocaleString()}</div>
+              <button className="bg-primary text-primary-foreground rounded-xl px-3 py-2 text-xs font-extrabold shrink-0 hover:opacity-90 transition-opacity"
+                onClick={() => { setPayoutAgent(a); setPayoutModal(true); }}>Send via M-Pesa →</button>
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* Recent Payouts from B2C transactions */}
+      <div className="text-xs font-extrabold text-muted-foreground tracking-widest uppercase mb-3">Recent Payouts</div>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="min-w-[500px]">
+            <div className="grid grid-cols-5 px-5 py-3 bg-accent/50 border-b border-border text-[10px] font-extrabold text-muted-foreground tracking-widest uppercase">
+              <span>Agent</span><span>Amount</span><span>M-Pesa Ref</span><span>Date</span><span>Status</span>
+            </div>
+            {(adminPayouts.length > 0 ? adminPayouts : MOCK_TRANSACTIONS.filter(t => t.type === "B2C")).map((t: any) => (
+              <div key={t.id} className="grid grid-cols-5 px-5 py-3 border-b border-border/50 text-sm items-center">
+                <span className="font-semibold truncate">{t.agent_name}</span>
+                <span className="font-extrabold" style={{ color: "#FF8C00" }}>KSh {Number(t.amount).toLocaleString()}</span>
+                <span className="font-mono text-xs text-muted-foreground">{t.payout_ref || t.mpesa_ref || "—"}</span>
+                <span className="text-xs text-muted-foreground">{t.created_at ? new Date(t.created_at).toLocaleDateString() : t.time}</span>
+                <span style={pill(t.status)}>{t.status}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 
@@ -343,7 +370,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="font-jakarta bg-background min-h-screen text-foreground">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -369,13 +395,18 @@ export default function AdminDashboard() {
             </button>
           ))}
         </nav>
-        <div className="px-5 py-4 border-t border-border flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-payloom-orange-light flex items-center justify-center font-extrabold text-xs text-primary-foreground">AD</div>
-          <div>
-            <div className="text-xs font-bold">Admin</div>
-            <div className="text-[10px] text-muted-foreground">PayLoom HQ</div>
+        <div className="px-5 py-4 border-t border-border">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-payloom-orange-light flex items-center justify-center font-extrabold text-xs text-primary-foreground">AD</div>
+            <div>
+              <div className="text-xs font-bold">Admin</div>
+              <div className="text-[10px] text-muted-foreground">PayLoom HQ</div>
+            </div>
+            <div className="ml-auto w-2 h-2 bg-payloom-success rounded-full" />
           </div>
-          <div className="ml-auto w-2 h-2 bg-payloom-success rounded-full" />
+          <button onClick={handleSignOut} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-destructive hover:bg-destructive/10 transition-colors">
+            <LogOut size={14} /> Sign Out
+          </button>
         </div>
       </aside>
 
@@ -406,13 +437,23 @@ export default function AdminDashboard() {
               <div className="text-center py-5">
                 <div className="text-6xl mb-4">✅</div>
                 <div className="text-xl font-extrabold mb-2">Payout Sent!</div>
-                <div className="text-sm text-muted-foreground">KSh {payoutAgent.pending.toLocaleString()} sent to {payoutAgent.phone} via M-Pesa B2C</div>
+                <div className="text-sm text-muted-foreground">KSh {(payoutAgent.pending || 0).toLocaleString()} sent to {payoutAgent.phone || payoutAgent.mpesa_phone} via M-Pesa B2C</div>
+                <div className="mt-4 bg-accent rounded-xl p-3 text-xs">
+                  <span className="text-muted-foreground">Ref: </span>
+                  <span className="text-primary font-mono">PLB{Math.random().toString(36).substring(2, 10).toUpperCase()}</span>
+                </div>
               </div>
             ) : (
               <>
                 <div className="text-lg font-extrabold mb-1">Confirm B2C Payout 💸</div>
                 <div className="text-sm text-muted-foreground mb-5">Send money via M-Pesa B2C API</div>
-                {([["Agent", payoutAgent.name], ["M-Pesa", payoutAgent.phone], ["Amount", `KSh ${payoutAgent.pending.toLocaleString()}`]] as const).map(([label, value]) => (
+                {([
+                  ["Agent", payoutAgent.name],
+                  ["M-Pesa", payoutAgent.phone || payoutAgent.mpesa_phone],
+                  ["Amount", `KSh ${(payoutAgent.pending || 0).toLocaleString()}`],
+                  ["Commission", `${payoutAgent.tier === "Platinum" ? 18 : payoutAgent.tier === "Gold" ? 12 : payoutAgent.tier === "Silver" ? 10 : 8}% rate`],
+                  ["Source", "PayLoom Merchant Account"],
+                ] as const).map(([label, value]) => (
                   <div key={label} className="flex justify-between py-3 border-b border-border text-sm">
                     <span className="text-muted-foreground">{label}</span>
                     <span className="font-bold" style={{ color: label === "Amount" ? "#FFD600" : undefined }}>{value}</span>
@@ -420,7 +461,7 @@ export default function AdminDashboard() {
                 ))}
                 <button className="bg-primary text-primary-foreground rounded-xl py-3.5 w-full text-sm font-extrabold mt-5 hover:opacity-90 transition-opacity disabled:opacity-60"
                   onClick={handlePayout} disabled={paying}>
-                  {paying ? "⏳ Sending via M-Pesa B2C..." : `Confirm & Send KSh ${payoutAgent.pending.toLocaleString()} →`}
+                  {paying ? "⏳ Sending via M-Pesa B2C..." : `Confirm & Send KSh ${(payoutAgent.pending || 0).toLocaleString()} →`}
                 </button>
                 <button className="bg-accent border border-border rounded-xl py-3 w-full text-sm font-bold text-muted-foreground mt-2 hover:bg-accent/80 transition-colors"
                   onClick={() => setPayoutModal(false)}>Cancel</button>
@@ -442,17 +483,21 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="text-lg font-extrabold">{viewAgent.name}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{viewAgent.phone} · Joined {viewAgent.joined}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{viewAgent.phone || viewAgent.mpesa_phone} · Joined {viewAgent.joined}</div>
+                <div className="flex gap-1.5 mt-1.5">
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded" style={{ background: `${TIER_COLOR[viewAgent.tier]}22`, color: TIER_COLOR[viewAgent.tier] }}>{viewAgent.tier}</span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded" style={pill(viewAgent.status)}>{viewAgent.status}</span>
+                </div>
               </div>
             </div>
-            {([["Total Sales", viewAgent.sales.toString()], ["Total Earned", `KSh ${viewAgent.earned.toLocaleString()}`], ["Pending Payout", `KSh ${viewAgent.pending.toLocaleString()}`]] as const).map(([label, value]) => (
+            {([["Total Sales", (viewAgent.sales || 0).toString()], ["Total Earned", `KSh ${(viewAgent.earned || 0).toLocaleString()}`], ["Pending Payout", `KSh ${(viewAgent.pending || 0).toLocaleString()}`]] as const).map(([label, value]) => (
               <div key={label} className="flex justify-between py-3 border-b border-border text-sm">
                 <span className="text-muted-foreground">{label}</span>
                 <span className="font-bold">{value}</span>
               </div>
             ))}
             <button className="bg-primary text-primary-foreground rounded-xl py-3.5 w-full text-sm font-extrabold mt-5 hover:opacity-90 transition-opacity"
-              onClick={() => { setAgentModal(false); setPayoutAgent(viewAgent); setPayoutModal(true); }}>💸 Send Payout</button>
+              onClick={() => { setAgentModal(false); setPayoutAgent(viewAgent); setPayoutModal(true); }}>💸 Send Payout to This Agent</button>
             <button className="bg-accent border border-border rounded-xl py-3 w-full text-sm font-bold text-muted-foreground mt-2 hover:bg-accent/80 transition-colors"
               onClick={() => setAgentModal(false)}>Close</button>
           </div>
