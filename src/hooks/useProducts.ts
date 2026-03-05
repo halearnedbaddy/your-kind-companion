@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { MOCK_PRODUCTS_SHOP, MOCK_CATEGORIES } from "@/data/mockData";
 
 export type Product = {
   id: string;
@@ -32,10 +33,17 @@ export function useProducts(categoryFilter?: string) {
       const { data, error } = await query;
       if (error) throw error;
 
-      return (data || []).map((p: any) => ({
+      const dbProducts = (data || []).map((p: any) => ({
         ...p,
         category_name: p.categories?.name || "Uncategorized",
       })) as (Product & { category_name: string })[];
+
+      // Fallback to mock data when DB is empty
+      if (dbProducts.length === 0) {
+        return MOCK_PRODUCTS_SHOP as (Product & { category_name: string })[];
+      }
+
+      return dbProducts;
     },
   });
 }
@@ -49,7 +57,13 @@ export function useCategories() {
         .select("*")
         .order("name");
       if (error) throw error;
-      return data || [];
+
+      // Fallback to mock categories
+      if (!data || data.length === 0) {
+        return MOCK_CATEGORIES;
+      }
+
+      return data;
     },
   });
 }

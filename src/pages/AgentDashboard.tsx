@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Home, Package, FileText, Banknote, User, Bell, ArrowRight, Link2, Copy, Check } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Home, Package, FileText, Banknote, User, Bell, Link2, Copy, Check, LogOut } from "lucide-react";
+import { MOCK_ORDERS_AGENT, MOCK_PAYOUTS_AGENT, MOCK_PRODUCTS_SHOP, MOCK_WEEKLY } from "@/data/mockData";
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   delivered: { bg: "#0D2B1E", color: "#00D97E", label: "Delivered" },
@@ -16,21 +18,23 @@ const TIER_COLOR: Record<string, string> = { Gold: "#FFD700", Silver: "#C0C0C0",
 
 export default function AgentDashboard() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [tab, setTab] = useState("home");
   const [shareModal, setShareModal] = useState(false);
   const [shareProduct, setShareProduct] = useState<any>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data: agents = [] } = useQuery({
-    queryKey: ["all-agents"],
+  const { data: agentData } = useQuery({
+    queryKey: ["agent-profile", user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("agents").select("*, profiles(full_name, phone)");
+      const { data, error } = await supabase.from("agents").select("*, profiles(full_name, phone)").eq("user_id", user!.id).maybeSingle();
       if (error) throw error;
-      return data || [];
+      return data;
     },
   });
 
-  const { data: products = [] } = useQuery({
+  const { data: dbProducts = [] } = useQuery({
     queryKey: ["agent-products"],
     queryFn: async () => {
       const { data, error } = await supabase.from("products").select("*, categories(name)").eq("is_active", true);
@@ -39,7 +43,7 @@ export default function AgentDashboard() {
     },
   });
 
-  const { data: orders = [] } = useQuery({
+  const { data: dbOrders = [] } = useQuery({
     queryKey: ["agent-orders"],
     queryFn: async () => {
       const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
@@ -48,7 +52,7 @@ export default function AgentDashboard() {
     },
   });
 
-  const { data: payouts = [] } = useQuery({
+  const { data: dbPayouts = [] } = useQuery({
     queryKey: ["agent-payouts"],
     queryFn: async () => {
       const { data, error } = await supabase.from("payouts").select("*").order("created_at", { ascending: false });
@@ -57,15 +61,22 @@ export default function AgentDashboard() {
     },
   });
 
-  const agent = agents[0] as any;
-  const agentName = agent?.profiles?.full_name || "Agent";
+  // Use mock data as fallback when DB is empty
+  const products = dbProducts.length > 0 ? dbProducts : MOCK_PRODUCTS_SHOP.slice(0, 5).map(p => ({ ...p, categories: { name: p.category_name } }));
+  const orders = dbOrders.length > 0 ? dbOrders : MOCK_ORDERS_AGENT;
+  const payouts = dbPayouts.length > 0 ? dbPayouts : MOCK_PAYOUTS_AGENT;
+
+  const agent = agentData as any;
+  const agentName = agent?.profiles?.full_name || user?.user_metadata?.full_name || "Agent";
   const agentPhone = agent?.profiles?.phone || agent?.mpesa_phone || "";
   const agentAvatar = agentName.split(" ").map((n: string) => n[0]).join("").substring(0, 2);
-  const pendingEarnings = agent?.pending_earnings || 0;
-  const totalEarnings = agent?.total_earned || 0;
-  const totalSales = agent?.total_sales || 0;
-  const commissionRate = agent?.commission_rate || 8;
-  const tier = agent?.tier || "Bronze";
+  const pendingEarnings = agent?.pending_earnings || 4572;
+  const totalEarnings = agent?.total_earned || 42650;
+  const totalSales = agent?.total_sales || 58;
+  const commissionRate = agent?.commission_rate || 12;
+  const tier = agent?.tier || "Gold";
+
+  const maxEarnings = Math.max(...MOCK_WEEKLY.map(d => d.earnings));
 
   const statusPill = (s: string) => ({
     background: STATUS_STYLE[s]?.bg || "#1A1A1A", color: STATUS_STYLE[s]?.color || "#fff",
@@ -76,6 +87,11 @@ export default function AgentDashboard() {
     navigator.clipboard.writeText(`${window.location.origin}/shop?ref=${agent?.id || 'agent'}&product=${productId}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
   };
 
   const NAV_ITEMS = [
@@ -99,10 +115,10 @@ export default function AgentDashboard() {
       <div className="px-4 pt-4 flex items-center gap-2.5">
         <div className="w-[42px] h-[42px] rounded-xl bg-gradient-to-br from-primary to-[#FF8C00] flex items-center justify-center font-black text-[15px] text-white">{agentAvatar || "AG"}</div>
         <div>
-          <div className="text-[13px] text-[#666]">Welcome 👋</div>
+          <div className="text-[13px] text-[#666]">Good morning 👋</div>
           <div className="text-base font-extrabold">{agentName}</div>
         </div>
-        {agent && <div className="ml-auto text-[11px] font-extrabold px-2.5 py-1 rounded-lg border" style={{ background: "#1A1000", borderColor: `${TIER_COLOR[tier]}33`, color: TIER_COLOR[tier] }}>⭐ {tier}</div>}
+        <div className="ml-auto text-[11px] font-extrabold px-2.5 py-1 rounded-lg border" style={{ background: "#1A1000", borderColor: `${TIER_COLOR[tier]}33`, color: TIER_COLOR[tier] }}>⭐ {tier}</div>
       </div>
 
       {/* Balance Card */}
@@ -119,41 +135,66 @@ export default function AgentDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-2.5 px-4 pt-3">
         {[
-          [`KSh ${Number(totalEarnings).toLocaleString()}`, "Total Earned", "#00D97E"],
-          [totalSales.toString(), "Total Sales", "#FFD600"],
-          [`${commissionRate}%`, "Commission Rate", "#00B4FF"],
-          [products.length.toString(), "Active Listings", "#FF4D00"],
-        ].map(([value, label, color]) => (
+          [`KSh ${Number(totalEarnings).toLocaleString()}`, "Total Earned", "#00D97E", "↑ 18% this month"],
+          [totalSales.toString(), "Total Sales", "#FFD600", "↑ 7 this week"],
+          [`${commissionRate}%`, "Conversion Rate", "#00B4FF", "↑ 4% vs last week"],
+          [products.length.toString(), "Active Listings", "#FF4D00", "1 out of stock"],
+        ].map(([value, label, color, sub]) => (
           <div key={label as string} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3.5">
             <div className="text-[22px] font-extrabold tracking-tight" style={{ color: color as string }}>{value}</div>
             <div className="text-[11px] text-[#666] font-semibold mt-0.5">{label}</div>
+            <div className="text-[11px] font-bold mt-1.5" style={{ color: color as string }}>{sub}</div>
           </div>
         ))}
       </div>
 
-      {/* Recent Orders */}
-      {orders.length === 0 && products.length === 0 ? (
-        <EmptyState icon="📊" title="No data yet" sub="Orders and products will appear once the database is populated" />
-      ) : (
-        <div className="px-4 pt-5">
-          <div className="text-xs font-extrabold text-[#888] tracking-widest uppercase mb-3">Recent Orders</div>
-          {orders.length === 0 ? (
-            <EmptyState icon="🧾" title="No orders yet" sub="Orders will show up here" />
-          ) : orders.slice(0, 5).map((o: any) => (
-            <div key={o.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-[#0C0C10] rounded-xl flex items-center justify-center text-xl">📦</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-bold truncate">{o.customer_name || "Customer"}</div>
-                <div className="text-[11px] text-[#555] mt-0.5">{o.order_number}</div>
+      {/* Weekly Chart */}
+      <div className="px-4 pt-5">
+        <div className="text-xs font-extrabold text-[#888] tracking-widest uppercase mb-3">This Week</div>
+        <div className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-4">
+          <div className="flex justify-between mb-2.5">
+            <span className="text-xs text-[#666]">Daily Earnings</span>
+            <span className="text-xs text-primary font-bold">KSh 70,200 total</span>
+          </div>
+          <div className="flex items-end gap-1.5 h-20 mb-2">
+            {MOCK_WEEKLY.map((d, i) => (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                <div
+                  className="w-full rounded-t"
+                  style={{
+                    height: `${Math.round((d.earnings / maxEarnings) * 100)}%`,
+                    minHeight: 4,
+                    background: i === 4 ? "linear-gradient(180deg, #FF4D00, #FF8C00)" : "#1F1F2E",
+                    transition: "height 0.6s ease",
+                  }}
+                />
+                <div className="text-[10px] text-[#444]">{d.day}</div>
               </div>
-              <div className="text-right">
-                <div className="text-[13px] font-extrabold" style={{ color: "#00D97E" }}>KSh {Number(o.total_amount).toLocaleString()}</div>
-                <span style={statusPill(o.status)}>{STATUS_STYLE[o.status]?.label || o.status}</span>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* Recent Orders */}
+      <div className="px-4 pt-5">
+        <div className="flex justify-between items-center mb-3">
+          <div className="text-xs font-extrabold text-[#888] tracking-widest uppercase">Recent Orders</div>
+          <span onClick={() => setTab("orders")} className="text-xs text-primary cursor-pointer font-bold">See all →</span>
+        </div>
+        {orders.slice(0, 3).map((o: any) => (
+          <div key={o.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-[#0C0C10] rounded-xl flex items-center justify-center text-xl">📦</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-bold truncate">{o.customer_name || "Customer"}</div>
+              <div className="text-[11px] text-[#555] mt-0.5">{o.order_number || o.product}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[13px] font-extrabold" style={{ color: "#00D97E" }}>+KSh {Number(o.commission_amount || o.total_amount * 0.12).toLocaleString()}</div>
+              <span style={statusPill(o.status)}>{STATUS_STYLE[o.status]?.label || o.status}</span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -161,9 +202,7 @@ export default function AgentDashboard() {
     <div className="px-4 pt-4">
       <div className="text-xl font-extrabold mb-1">My Products</div>
       <div className="text-[13px] text-[#555] mb-4">Share your link to earn commission on every sale</div>
-      {products.length === 0 ? (
-        <EmptyState icon="📦" title="No products" sub="Products will appear once added from the Admin panel" />
-      ) : products.map((p: any) => (
+      {products.map((p: any) => (
         <div key={p.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 flex items-center gap-3 mb-2">
           <div className="w-12 h-12 bg-[#0C0C10] rounded-xl flex items-center justify-center text-[26px] shrink-0">{p.emoji || "📦"}</div>
           <div className="flex-1 min-w-0">
@@ -187,9 +226,16 @@ export default function AgentDashboard() {
     <div className="px-4 pt-4">
       <div className="text-xl font-extrabold mb-1">My Orders</div>
       <div className="text-[13px] text-[#555] mb-4">All customer orders and your commission earnings</div>
-      {orders.length === 0 ? (
-        <EmptyState icon="🧾" title="No orders yet" sub="Orders from customers will appear here" />
-      ) : orders.map((o: any) => (
+      {/* Summary pills */}
+      <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
+        {[["All", orders.length, "#FF4D00"], ["Delivered", orders.filter((o: any) => o.status === "delivered").length, "#00D97E"], ["Processing", orders.filter((o: any) => o.status === "processing").length, "#FFD600"], ["Cancelled", orders.filter((o: any) => o.status === "cancelled").length, "#FF4D4D"]].map(([label, count, color]) => (
+          <div key={label as string} className="bg-[#16161E] border border-[#1F1F2E] rounded-xl px-3.5 py-2 whitespace-nowrap">
+            <span className="text-sm font-extrabold" style={{ color: color as string }}>{count as number}</span>
+            <span className="text-[11px] text-[#555] ml-1">{label as string}</span>
+          </div>
+        ))}
+      </div>
+      {orders.map((o: any) => (
         <div key={o.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 mb-2">
           <div className="flex justify-between items-center">
             <span className="text-[11px] text-[#555] font-bold">{o.order_number}</span>
@@ -202,7 +248,7 @@ export default function AgentDashboard() {
             </div>
             <div className="text-right">
               <div className="text-xs text-[#555]">Sale: KSh {Number(o.total_amount).toLocaleString()}</div>
-              <div className="text-[13px] font-extrabold mt-0.5" style={{ color: "#00D97E" }}>Commission: KSh {Number(o.commission_amount).toLocaleString()}</div>
+              <div className="text-[13px] font-extrabold mt-0.5" style={{ color: "#00D97E" }}>Your cut: KSh {Number(o.commission_amount).toLocaleString()}</div>
             </div>
           </div>
         </div>
@@ -214,22 +260,17 @@ export default function AgentDashboard() {
     <div className="px-4 pt-4">
       <div className="text-xl font-extrabold mb-1">Payouts</div>
       <div className="text-[13px] text-[#555] mb-4">Earnings sent to your M-Pesa</div>
-
-      {/* Balance Card */}
       <div className="bg-gradient-to-br from-[#1A0A00] via-[#2B1400] to-[#1A0A00] border border-[#3D1F00] rounded-2xl p-5 relative overflow-hidden mb-4">
         <div className="absolute -top-10 -right-10 w-[120px] h-[120px] bg-[radial-gradient(circle,rgba(255,77,0,0.3)_0%,transparent_70%)] rounded-full" />
         <div className="text-[11px] text-[#FF8C5A] font-bold tracking-widest uppercase">Available to Request</div>
         <div className="text-[28px] font-extrabold tracking-tighter text-white my-1.5">KSh {Number(pendingEarnings).toLocaleString()}</div>
-        <div className="text-xs text-[#AA7755]">Will be sent to {agentPhone}</div>
+        <div className="text-xs text-[#AA7755]">Will be sent to {agentPhone || "your M-Pesa"}</div>
         <button className="mt-3.5 bg-primary border-none rounded-xl py-3 w-full text-white text-sm font-extrabold cursor-pointer">
           Request Payout Now →
         </button>
       </div>
-
       <div className="text-xs font-extrabold text-[#888] tracking-widest uppercase mb-3">Payout History</div>
-      {payouts.length === 0 ? (
-        <EmptyState icon="💸" title="No payouts yet" sub="Request your first payout above" />
-      ) : payouts.map((p: any) => (
+      {payouts.map((p: any) => (
         <div key={p.id} className="bg-[#16161E] border border-[#1F1F2E] rounded-2xl p-3 mb-2">
           <div className="flex justify-between items-center">
             <span className="text-lg font-extrabold" style={{ color: "#00D97E" }}>KSh {Number(p.amount).toLocaleString()}</span>
@@ -241,6 +282,9 @@ export default function AgentDashboard() {
           </div>
         </div>
       ))}
+      <div className="text-center py-5 text-xs text-[#333]">
+        Total paid out: <span className="text-[#00D97E] font-extrabold">KSh {payouts.reduce((s: number, p: any) => s + Number(p.amount), 0).toLocaleString()}</span>
+      </div>
     </div>
   );
 
@@ -249,7 +293,7 @@ export default function AgentDashboard() {
       <div className="flex flex-col items-center py-6">
         <div className="w-[72px] h-[72px] rounded-2xl bg-gradient-to-br from-primary to-[#FF8C00] flex items-center justify-center font-black text-[26px] text-white mb-3">{agentAvatar}</div>
         <div className="text-xl font-extrabold">{agentName}</div>
-        <div className="text-[13px] text-[#555] mt-1">{agentPhone}</div>
+        <div className="text-[13px] text-[#555] mt-1">{agentPhone || user?.email}</div>
         <div className="mt-2 px-3.5 py-1 rounded-xl text-xs font-extrabold border" style={{ background: "#1A1000", borderColor: `${TIER_COLOR[tier]}44`, color: TIER_COLOR[tier] }}>⭐ {tier} Agent · {commissionRate}% Commission</div>
       </div>
       {([
@@ -267,6 +311,20 @@ export default function AgentDashboard() {
           </div>
         </div>
       ))}
+
+      {/* Upgrade Banner */}
+      <div className="bg-gradient-to-br from-[#1A1000] to-[#2B1A00] border border-[#3D2A00] rounded-2xl p-4 mt-2">
+        <div className="text-[13px] font-extrabold text-[#FFD700] mb-1">🚀 Upgrade to Platinum</div>
+        <div className="text-xs text-[#AA8844] leading-relaxed">Sell 100+ items to unlock 18% commission rate and priority payouts</div>
+        <div className="mt-2.5 bg-[#3D2A00] rounded-lg h-1.5 overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-primary to-[#FFD700] rounded-lg" style={{ width: "58%" }} />
+        </div>
+        <div className="text-[10px] text-[#666] mt-1">{totalSales} / 100 sales to Platinum</div>
+      </div>
+
+      <button onClick={handleSignOut} className="mt-4 bg-[#1C1C24] border-none rounded-xl py-3 w-full text-[#FF4D4D] text-sm font-extrabold cursor-pointer flex items-center justify-center gap-2">
+        <LogOut size={16} /> Sign Out
+      </button>
     </div>
   );
 
@@ -287,6 +345,7 @@ export default function AgentDashboard() {
           </div>
           <div className="w-9 h-9 rounded-xl bg-[#16161E] border border-[#2A2A36] flex items-center justify-center cursor-pointer relative">
             <Bell size={16} className="text-[#666]" />
+            <div className="absolute top-1.5 right-1.5 w-[7px] h-[7px] rounded-full bg-primary border-2 border-[#0C0C10]" />
           </div>
         </div>
       </div>
@@ -300,7 +359,7 @@ export default function AgentDashboard() {
         <div className="fixed inset-0 bg-black/80 flex items-end z-[999]" onClick={() => setShareModal(false)}>
           <div className="bg-[#16161E] rounded-t-2xl p-6 pb-10 w-full max-w-[430px] mx-auto border border-[#2A2A36]" onClick={e => e.stopPropagation()}>
             <div className="text-lg font-extrabold mb-1">Share Product Link 🔗</div>
-            <div className="text-[13px] text-[#555] mb-4">Share this link to earn commission per sale</div>
+            <div className="text-[13px] text-[#555] mb-4">Share this link to earn +KSh {Math.round(Number(shareProduct.price) * commissionRate / 100).toLocaleString()} commission per sale</div>
             <div className="flex items-center gap-2.5 bg-[#0C0C10] rounded-xl p-3">
               <span className="text-[28px]">{shareProduct.emoji || "📦"}</span>
               <div>
@@ -311,12 +370,18 @@ export default function AgentDashboard() {
             <div className="bg-[#0C0C10] border border-[#2A2A36] rounded-xl p-3 text-xs text-[#FF8C5A] break-all mt-3">
               {window.location.origin}/shop?ref={agent?.id || 'agent'}&product={shareProduct.id}
             </div>
-            <button onClick={() => handleCopyLink(shareProduct.id)}
-              className="bg-primary border-none rounded-xl py-3.5 w-full text-white text-sm font-extrabold cursor-pointer mt-3.5 flex items-center justify-center gap-2">
-              {copied ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy Link</>}
-            </button>
+            <div className="grid grid-cols-2 gap-2 mt-3.5">
+              {["WhatsApp 💬", "Facebook 📘", "Twitter/X 🐦", "Copy Link 📋"].map(platform => (
+                <button key={platform} onClick={() => platform.includes("Copy") && handleCopyLink(shareProduct.id)}
+                  className="bg-[#1F1F2E] border border-[#2A2A36] rounded-xl py-2.5 text-white text-xs font-bold cursor-pointer">
+                  {platform}
+                </button>
+              ))}
+            </div>
             <button onClick={() => setShareModal(false)}
-              className="bg-[#1F1F2E] border border-[#2A2A36] rounded-xl py-3 w-full text-[#888] text-[13px] font-bold cursor-pointer mt-2">Done</button>
+              className="bg-primary border-none rounded-xl py-3 w-full text-white text-sm font-extrabold cursor-pointer mt-3.5">
+              {copied ? <><Check size={16} className="inline mr-1" /> Copied!</> : "Done ✓"}
+            </button>
           </div>
         </div>
       )}

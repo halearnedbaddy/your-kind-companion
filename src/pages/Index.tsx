@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Shield, Zap, Users, Smartphone, Globe, ArrowRight } from "lucide-react";
+import { Shield, Zap, Users, Smartphone, Globe, ArrowRight, LogIn } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const FEATURES = [
   { icon: <Smartphone size={24} />, title: "M-Pesa Payments", desc: "Accept mobile money payments via STK Push integration" },
@@ -18,6 +19,7 @@ const APPS = [
 
 export default function Index() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-background text-foreground font-jakarta overflow-x-hidden">
@@ -35,9 +37,21 @@ export default function Index() {
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#platforms" className="hover:text-foreground transition-colors">Platforms</a>
           </div>
-          <button onClick={() => navigate("/shop")} className="bg-primary text-primary-foreground px-5 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
-            Open Shop →
-          </button>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <>
+                <button onClick={() => navigate("/agent")} className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Dashboard</button>
+                <button onClick={() => signOut()} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Sign Out</button>
+              </>
+            ) : (
+              <button onClick={() => navigate("/auth")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <LogIn size={16} /> Sign In
+              </button>
+            )}
+            <button onClick={() => navigate("/shop")} className="bg-primary text-primary-foreground px-5 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+              Open Shop →
+            </button>
+          </div>
         </div>
       </nav>
 
