@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   const { data: dbAgents = [] } = useQuery({
     queryKey: ["admin-agents"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("agents").select("*, profiles(full_name, phone)");
+      const { data, error } = await (supabase as any).from("agents").select("*, profiles(full_name, phone)");
       if (error) throw error;
       return (data || []).map((a: any) => ({
         ...a,
@@ -50,7 +50,7 @@ export default function AdminDashboard() {
   const { data: dbTransactions = [] } = useQuery({
     queryKey: ["admin-transactions"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("transactions").select("*, agents(profiles(full_name), mpesa_phone)").order("created_at", { ascending: false });
+      const { data, error } = await (supabase as any).from("transactions").select("*, agents(profiles(full_name), mpesa_phone)").order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []).map((t: any) => ({ ...t, agent_name: t.agents?.profiles?.full_name || "Unknown" }));
     },
@@ -59,7 +59,7 @@ export default function AdminDashboard() {
   const { data: dbProducts = [] } = useQuery({
     queryKey: ["admin-products"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("*, categories(name)").order("total_sold", { ascending: false });
+      const { data, error } = await (supabase as any).from("products").select("*, categories(name)").order("total_sold", { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
   const { data: dbPayouts = [] } = useQuery({
     queryKey: ["admin-payouts"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("payouts").select("*, agents(profiles(full_name), mpesa_phone)").order("created_at", { ascending: false });
+      const { data, error } = await (supabase as any).from("payouts").select("*, agents(profiles(full_name), mpesa_phone)").order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []).map((p: any) => ({ ...p, agent_name: p.agents?.profiles?.full_name || "Unknown", agent_phone: p.agents?.mpesa_phone || "" }));
     },

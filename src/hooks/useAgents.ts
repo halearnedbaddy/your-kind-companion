@@ -5,7 +5,7 @@ export function useAgents() {
   return useQuery({
     queryKey: ["agents"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("agents")
         .select("*, profiles(full_name, phone, avatar_url)")
         .order("total_earned", { ascending: false });
@@ -25,7 +25,7 @@ export function useAgentProfile(userId?: string) {
     queryKey: ["agent-profile", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("agents")
         .select("*, profiles(full_name, phone, avatar_url)")
         .eq("user_id", userId!)

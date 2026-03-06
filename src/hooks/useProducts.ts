@@ -24,7 +24,7 @@ export function useProducts(categoryFilter?: string) {
   return useQuery({
     queryKey: ["products", categoryFilter],
     queryFn: async () => {
-      let query = supabase
+      let query = (supabase as any)
         .from("products")
         .select("*, categories(name)")
         .eq("is_active", true)
@@ -52,7 +52,7 @@ export function useCategories() {
   return useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("categories")
         .select("*")
         .order("name");
