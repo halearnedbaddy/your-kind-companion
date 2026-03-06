@@ -5,7 +5,7 @@ export function useOrders(agentId?: string) {
   return useQuery({
     queryKey: ["orders", agentId],
     queryFn: async () => {
-      let query = supabase
+      let query = (supabase as any)
         .from("orders")
         .select("*, order_items(*, products(name, emoji))")
         .order("created_at", { ascending: false });

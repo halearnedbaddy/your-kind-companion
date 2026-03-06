@@ -28,7 +28,7 @@ export default function AgentDashboard() {
     queryKey: ["agent-profile", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from("agents").select("*, profiles(full_name, phone)").eq("user_id", user!.id).maybeSingle();
+      const { data, error } = await (supabase as any).from("agents").select("*, profiles(full_name, phone)").eq("user_id", user!.id).maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -37,7 +37,7 @@ export default function AgentDashboard() {
   const { data: dbProducts = [] } = useQuery({
     queryKey: ["agent-products"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("*, categories(name)").eq("is_active", true);
+      const { data, error } = await (supabase as any).from("products").select("*, categories(name)").eq("is_active", true);
       if (error) throw error;
       return data || [];
     },
@@ -46,7 +46,7 @@ export default function AgentDashboard() {
   const { data: dbOrders = [] } = useQuery({
     queryKey: ["agent-orders"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      const { data, error } = await (supabase as any).from("orders").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -55,7 +55,7 @@ export default function AgentDashboard() {
   const { data: dbPayouts = [] } = useQuery({
     queryKey: ["agent-payouts"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("payouts").select("*").order("created_at", { ascending: false });
+      const { data, error } = await (supabase as any).from("payouts").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
     },

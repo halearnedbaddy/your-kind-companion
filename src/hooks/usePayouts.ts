@@ -5,7 +5,7 @@ export function usePayouts(agentId?: string) {
   return useQuery({
     queryKey: ["payouts", agentId],
     queryFn: async () => {
-      let query = supabase
+      let query = (supabase as any)
         .from("payouts")
         .select("*, agents(profiles(full_name), mpesa_phone)")
         .order("created_at", { ascending: false });
